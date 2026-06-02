@@ -1,0 +1,15 @@
+# Dependencias
+node_modules/
+server/node_modules/
+
+# Variables de entorno
+.env
+server/.env
+
+# Build
+dist/
+build/
+
+# Sistema
+.DS_Store
+Thumbs.db
