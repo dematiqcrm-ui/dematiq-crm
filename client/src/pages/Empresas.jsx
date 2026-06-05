@@ -4,7 +4,8 @@ import Layout from "../components/layout/Layout";
 import EmpresaForm from "../components/empresas/EmpresaForm";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Pencil, Trash2, ExternalLink, Search, ChevronDown, X, Building2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Search, ChevronDown, X, Building2, Users, Mail, Clock, Paperclip } from "lucide-react";
+import api from "../services/api";
 
 import { getParques } from "../services/parqueService";
 import {
@@ -154,7 +155,11 @@ function SearchIcon() {
 
 export default function Empresas() {
   const [searchParams, setSearchParams] = useSearchParams();
-
+  const [historial, setHistorial]           = useState([]);
+  const [verHistorial, setVerHistorial]     = useState(false);
+  const [correoContacto, setCorreoContacto] = useState(null);
+  const [correoForm, setCorreoForm] = useState({ asunto: "", mensaje: "", adjuntos: [] });
+  const [enviandoCorreo, setEnviandoCorreo] = useState(false);
   const [parques, setParques]                       = useState([]);
   const [parqueSeleccionado, setParqueSeleccionado] = useState("");
   const [empresas, setEmpresas]                     = useState([]);
@@ -192,6 +197,44 @@ export default function Empresas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+const handleEnviarCorreo = async () => {
+  if (!correoForm.asunto || !correoForm.mensaje) {
+    Swal.fire({ icon: "warning", title: "Completa todos los campos", timer: 1400, showConfirmButton: false });
+    return;
+  }
+  setEnviandoCorreo(true);
+  try {
+    const formData = new FormData();
+    formData.append("destinatario", correoContacto.correo);
+    formData.append("asunto", correoForm.asunto);
+    formData.append("mensaje", correoForm.mensaje);
+    formData.append("empresaId", detailEmpresa._id);
+    formData.append("contactoNombre", correoContacto.nombre);
+    correoForm.adjuntos.forEach((file) => formData.append("adjuntos", file));
+
+    await api.post("/correo/enviar", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    setCorreoForm({ asunto: "", mensaje: "", adjuntos: [] });
+    await Swal.fire({ icon: "success", title: "Correo enviado", timer: 1400, showConfirmButton: false });
+    setCorreoContacto(null);
+  } catch {
+    Swal.fire({ icon: "error", title: "Error", text: "No se pudo enviar el correo" });
+  } finally {
+    setEnviandoCorreo(false);
+  }
+};
+
+const handleVerHistorial = async (empresa) => {
+  try {
+    const { data } = await api.get(`/correo/historial/${empresa._id}`);
+    setHistorial(data);
+    setVerHistorial(empresa);
+  } catch {
+    Swal.fire({ icon: "error", title: "Error", text: "No se pudo cargar el historial" });
+  }
+};
+
   const cargarEmpresas = useCallback(async () => {
     if (!parqueSeleccionado) return;
     try {
@@ -224,45 +267,87 @@ export default function Empresas() {
   };
 
   const handleUpdate = async (data) => {
-    try {
-      await updateEmpresa(editingEmpresa._id, data);
-      await cargarEmpresas();
-      setEditingEmpresa(null);
-      Swal.fire({ icon: "success", title: "Empresa actualizada", timer: 1400, showConfirmButton: false });
-    } catch {
-      Swal.fire({ icon: "error", title: "Error", text: "No se pudo actualizar la empresa" });
-    }
-  };
+  const { value: password } = await Swal.fire({
+    title: "Confirmar edición",
+    input: "password",
+    inputLabel: "Ingresa tu contraseña para continuar",
+    inputPlaceholder: "Contraseña",
+    showCancelButton: true,
+    confirmButtonColor: "#3b5bff",
+    cancelButtonColor: "#475569",
+    confirmButtonText: "Confirmar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
+
+  if (!password) return;
+
+  try {
+    await api.post("/auth/verify-password", { password });
+  } catch {
+    Swal.fire({ icon: "error", title: "Contraseña incorrecta", timer: 1400, showConfirmButton: false });
+    return;
+  }
+
+  try {
+    await updateEmpresa(editingEmpresa._id, data);
+    await cargarEmpresas();
+    setEditingEmpresa(null);
+    Swal.fire({ icon: "success", title: "Empresa actualizada", timer: 1400, showConfirmButton: false });
+  } catch {
+    Swal.fire({ icon: "error", title: "Error", text: "No se pudo actualizar la empresa" });
+  }
+};
 
   const handleDelete = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Eliminar empresa?",
-      text: "Esta acción no se puede deshacer.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626", cancelButtonColor: "#475569",
-      confirmButtonText: "Sí, eliminar", cancelButtonText: "Cancelar",
-      reverseButtons: true,
-    });
-    if (!result.isConfirmed) return;
-    try {
-      await deleteEmpresa(id);
-      await cargarEmpresas();
-      Swal.fire({ icon: "success", title: "Empresa eliminada", timer: 1400, showConfirmButton: false });
-    } catch {
-      Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar la empresa" });
-    }
-  };
-
-  const empresasFiltradas = empresas.filter((e) => {
-    const q = search.toLowerCase();
-    return (
-      e.empresa?.toLowerCase().includes(q) ||
-      e.giroEmpresa?.toLowerCase().includes(q) ||
-      e.numero?.toLowerCase().includes(q) ||
-      e.telefono?.toLowerCase().includes(q)
-    );
+  const { value: password } = await Swal.fire({
+    title: "Confirmar eliminación",
+    input: "password",
+    inputLabel: "Ingresa tu contraseña para continuar",
+    inputPlaceholder: "Contraseña",
+    showCancelButton: true,
+    confirmButtonColor: "#dc2626",
+    cancelButtonColor: "#475569",
+    confirmButtonText: "Eliminar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
   });
+
+  if (!password) return;
+
+  try {
+    await api.post("/auth/verify-password", { password });
+  } catch {
+    Swal.fire({ icon: "error", title: "Contraseña incorrecta", timer: 1400, showConfirmButton: false });
+    return;
+  }
+
+  try {
+    await deleteEmpresa(id);
+    await cargarEmpresas();
+    Swal.fire({ icon: "success", title: "Empresa eliminada", timer: 1400, showConfirmButton: false });
+  } catch {
+    Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar la empresa" });
+  }
+};
+
+  const [sortAsc, setSortAsc] = useState(true);
+
+const empresasFiltradas = empresas
+    .filter((e) => {
+      const q = search.toLowerCase();
+      return (
+        e.empresa?.toLowerCase().includes(q) ||
+        e.giroEmpresa?.toLowerCase().includes(q) ||
+        e.numero?.toLowerCase().includes(q) ||
+        e.telefono?.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const nameA = a.empresa?.toLowerCase() || "";
+      const nameB = b.empresa?.toLowerCase() || "";
+      return sortAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+    });
 
   const parqueActual = parques.find((p) => p._id === parqueSeleccionado);
 
@@ -331,7 +416,13 @@ export default function Empresas() {
             <thead>
               <tr>
                 {["#", "Empresa", "Giro", "Dirección", "Teléfono", "Página web", "Contactos", "Acciones"].map((h) => (
-                  <th key={h} style={s.th}>{h}</th>
+                  h === "Empresa" ? (
+                    <th key={h} style={{ ...s.th, cursor: "pointer", userSelect: "none" }} onClick={() => setSortAsc(!sortAsc)}>
+                      Empresa {sortAsc ? "↑" : "↓"}
+                    </th>
+                  ) : (
+                    <th key={h} style={s.th}>{h}</th>
+                  )
                 ))}
               </tr>
             </thead>
@@ -412,19 +503,24 @@ export default function Empresas() {
                       ) : <span style={{ color: "rgba(255,255,255,0.13)", fontSize: 12 }}>—</span>}
                     </td>
                     <td style={s.td}>
-                      <div style={{ display: "flex", gap: 5 }}>
-                        <button onClick={() => setEditingEmpresa(empresa)} style={s.actBtn("edit")}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(251,191,36,0.1)"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Editar">
-                          <Pencil size={12} />
-                        </button>
-                        <button onClick={() => handleDelete(empresa._id)} style={s.actBtn("delete")}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.1)"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Eliminar">
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
+  <div style={{ display: "flex", gap: 5 }}>
+    <button onClick={() => handleVerHistorial(empresa)} style={{ ...s.actBtn("hist"), color: "#34d399" }}
+      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(52,211,153,0.1)"}
+      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Historial">
+      <Clock size={12} />
+    </button>
+    <button onClick={() => setEditingEmpresa(empresa)} style={s.actBtn("edit")}
+      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(251,191,36,0.1)"}
+      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Editar">
+      <Pencil size={12} />
+    </button>
+    <button onClick={() => handleDelete(empresa._id)} style={s.actBtn("delete")}
+      onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.1)"}
+      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Eliminar">
+      <Trash2 size={12} />
+    </button>
+  </div>
+</td>
                   </tr>
                 ))
               )}
@@ -486,59 +582,237 @@ export default function Empresas() {
       </AnimatePresence>
 
       {/* Modal Contactos */}
-      <AnimatePresence>
-        {detailEmpresa && (
-          <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetailEmpresa(null)}>
-            <motion.div style={{ ...s.modalBox, maxWidth: 480 }} variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={(e) => e.stopPropagation()}>
-              <div style={s.modalHeader}>
-                <div>
-                  <div style={s.modalTitle}>Contactos</div>
-                  <div style={s.modalSubtitle}>{detailEmpresa.empresa}</div>
+<AnimatePresence>
+  {detailEmpresa && (
+    <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetailEmpresa(null)}>
+      <motion.div style={{ ...s.modalBox, maxWidth: 480 }} variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={(e) => e.stopPropagation()}>
+        <div style={s.modalHeader}>
+          <div>
+            <div style={s.modalTitle}>Contactos</div>
+            <div style={s.modalSubtitle}>{detailEmpresa.empresa}</div>
+          </div>
+          <button onClick={() => setDetailEmpresa(null)} style={s.modalCloseBtn}
+            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+            <X size={15} />
+          </button>
+        </div>
+        <div>
+          {detailEmpresa.contactos.map((c, i) => (
+            <div key={i} style={s.contactCard}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+                <div style={{
+                  width: 34, height: 34, borderRadius: "50%",
+                  background: "rgba(99,130,246,0.12)", border: "1px solid rgba(99,130,246,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 12, fontWeight: 600, color: "#818cf8", flexShrink: 0,
+                }}>
+                  {c.nombre ? c.nombre.trim().split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() : "?"}
                 </div>
-                <button onClick={() => setDetailEmpresa(null)} style={s.modalCloseBtn}
-                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
-                  <X size={15} />
-                </button>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>
+                    {c.nombre || <span style={{ color: "rgba(255,255,255,0.2)" }}>Sin nombre</span>}
+                  </div>
+                  {c.puesto && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>{c.puesto}</div>}
+                </div>
+                {c.correo && (
+                  <button
+                    onClick={() => { setCorreoContacto(c); setCorreoForm({ asunto: "", mensaje: "", adjuntos: [] }); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 5,
+                      padding: "4px 10px", borderRadius: 6,
+                      background: "rgba(59,91,255,0.1)", border: "1px solid rgba(99,130,246,0.2)",
+                      color: "#818cf8", fontSize: 11, fontWeight: 500,
+                      cursor: "pointer", fontFamily: "inherit",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = "rgba(59,91,255,0.18)"}
+                    onMouseLeave={(e) => e.currentTarget.style.background = "rgba(59,91,255,0.1)"}
+                  >
+                    <Mail size={11} /> Enviar correo
+                  </button>
+                )}
               </div>
-              <div>
-                {detailEmpresa.contactos.map((c, i) => (
-                  <div key={i} style={s.contactCard}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                      <div style={{
-                        width: 34, height: 34, borderRadius: "50%",
-                        background: "rgba(99,130,246,0.12)", border: "1px solid rgba(99,130,246,0.2)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 12, fontWeight: 600, color: "#818cf8", flexShrink: 0,
-                      }}>
-                        {c.nombre ? c.nombre.trim().split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() : "?"}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>
-                          {c.nombre || <span style={{ color: "rgba(255,255,255,0.2)" }}>Sin nombre</span>}
-                        </div>
-                        {c.puesto && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>{c.puesto}</div>}
-                      </div>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px" }}>
-                      {[
-                        { label: "Correo", value: c.correo ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a> : null },
-                        { label: "Teléfono", value: c.telefono },
-                      ].map(({ label, value }) => (
-                        <div key={label}>
-                          <div style={s.contactLabel}>{label}</div>
-                          <div style={s.contactValue}>{value || <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}</div>
-                        </div>
-                      ))}
-                    </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px" }}>
+                {[
+                  { label: "Correo", value: c.correo ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a> : null },
+                  { label: "Teléfono", value: c.telefono },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <div style={s.contactLabel}>{label}</div>
+                    <div style={s.contactValue}>{value || <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}</div>
                   </div>
                 ))}
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+
+{/* Modal Enviar Correo */}
+<AnimatePresence>
+  {correoContacto && (
+    <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCorreoContacto(null)}>
+      <motion.div style={{ ...s.modalBox, maxWidth: 480 }} variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={(e) => e.stopPropagation()}>
+        <div style={s.modalHeader}>
+          <div>
+            <div style={s.modalTitle}>Enviar correo</div>
+            <div style={s.modalSubtitle}>Para: {correoContacto.correo}</div>
+          </div>
+          <button onClick={() => setCorreoContacto(null)} style={s.modalCloseBtn}
+            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+            <X size={15} />
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <div style={s.contactLabel}>Asunto</div>
+            <input
+              type="text"
+              placeholder="Asunto del correo"
+              value={correoForm.asunto}
+              onChange={(e) => setCorreoForm({ ...correoForm, asunto: e.target.value })}
+              style={{ ...s.searchInput, padding: "0 12px", width: "100%", boxSizing: "border-box", marginTop: 6 }}
+              onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
+              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+          </div>
+          <div>
+            <div style={s.contactLabel}>Mensaje</div>
+            <textarea
+              placeholder="Escribe tu mensaje aquí..."
+              value={correoForm.mensaje}
+              onChange={(e) => setCorreoForm({ ...correoForm, mensaje: e.target.value })}
+              rows={6}
+              style={{
+                width: "100%", marginTop: 6, padding: "10px 12px",
+                background: "#131720", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8, color: "#e2e8f0", fontSize: 13,
+                fontFamily: "inherit", resize: "vertical", boxSizing: "border-box",
+                outline: "none",
+              }}
+              onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
+              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+          </div>
+          <div>
+            <div style={s.contactLabel}>Adjuntos</div>
+            <label style={{
+              display: "flex", alignItems: "center", gap: 8, marginTop: 6,
+              padding: "8px 12px", borderRadius: 8, cursor: "pointer",
+              border: "1px dashed rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)",
+              fontSize: 12, transition: "border-color 0.15s",
+            }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(99,130,246,0.4)"}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}
+            >
+              <Paperclip size={13} />
+              Seleccionar archivos
+              <input
+                type="file"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => setCorreoForm({ ...correoForm, adjuntos: [...correoForm.adjuntos, ...Array.from(e.target.files)] })}
+              />
+            </label>
+            {correoForm.adjuntos.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                {correoForm.adjuntos.map((file, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "5px 10px", borderRadius: 6,
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {file.name}
+                    </span>
+                    <button
+                      onClick={() => setCorreoForm({ ...correoForm, adjuntos: correoForm.adjuntos.filter((_, j) => j !== i) })}
+                      style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: "0 4px", fontSize: 14, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleEnviarCorreo}
+            disabled={enviandoCorreo}
+            style={{
+              height: 38, borderRadius: 8,
+              background: enviandoCorreo ? "rgba(59,91,255,0.4)" : "#3b5bff",
+              border: "none", color: "#fff",
+              fontSize: 13, fontWeight: 500,
+              cursor: enviandoCorreo ? "not-allowed" : "pointer",
+              fontFamily: "inherit", display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 6, transition: "background 0.15s",
+            }}
+          >
+            <Mail size={14} />
+            {enviandoCorreo ? "Enviando..." : "Enviar correo"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+{/* Modal Historial */}
+<AnimatePresence>
+  {verHistorial && (
+    <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setVerHistorial(false)}>
+      <motion.div style={{ ...s.modalBox, maxWidth: 520 }} variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={(e) => e.stopPropagation()}>
+        <div style={s.modalHeader}>
+          <div>
+            <div style={s.modalTitle}>Historial de contactos</div>
+            <div style={s.modalSubtitle}>{verHistorial.empresa}</div>
+          </div>
+          <button onClick={() => setVerHistorial(false)} style={s.modalCloseBtn}
+            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+            <X size={15} />
+          </button>
+        </div>
+        <div>
+          {historial.length === 0 ? (
+            <div style={s.empty}>Sin correos enviados aún</div>
+          ) : (
+            historial.map((h, i) => (
+              <div key={i} style={{ ...s.contactCard, marginBottom: 8 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>{h.asunto}</div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap", marginLeft: 10 }}>
+                    {new Date(h.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>
+                  Para: {h.contactoNombre} — {h.contactoCorreo}
+                </div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.5 }}>
+                  {h.mensaje.length > 120 ? h.mensaje.slice(0, 120) + "…" : h.mensaje}
+                </div>
+                {h.enviadoPor && (
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 6 }}>
+                    Enviado por: {h.enviadoPor.nombre}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
     </Layout>
   );
 }

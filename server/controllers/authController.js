@@ -111,6 +111,21 @@ export const updateProfile = async (
   }
 };
 
+export const verifyPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    console.log("password recibido:", password);
+    console.log("user id:", req.user.id);
+    const user = await User.findById(req.user.id);
+    console.log("hash en BD:", user.password);
+    const valid = await bcrypt.compare(password, user.password);
+    console.log("válido:", valid);
+    if (!valid) return res.status(400).json({ message: "Contraseña incorrecta" });
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 // CAMBIAR CONTRASEÑA
 export const changePassword = async (
   req,

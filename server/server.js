@@ -7,7 +7,8 @@ import parqueRoutes from "./routes/parqueRoutes.js";
 import empresaRoutes from "./routes/empresaRoutes.js";
 import reporteRoutes from "./routes/reporteRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
-import exportRoutes from "./routes/exportRoutes.js"; // ← ahora ES Module
+import exportRoutes from "./routes/exportRoutes.js";
+import correoRoutes from "./routes/correoRoutes.js"; // ← agregar
 
 dotenv.config();
 
@@ -28,7 +29,8 @@ app.use("/api/parques",  parqueRoutes);
 app.use("/api/empresas", empresaRoutes);
 app.use("/api/reportes", reporteRoutes);
 app.use("/api/auth",     authRoutes);
-app.use("/api",          exportRoutes); // health, export/excel, export/pdf, export/backup
+app.use("/api/correo",   correoRoutes); // ← agregar
+app.use("/api",          exportRoutes);
 
 app.get("/", (req, res) => {
   res.json({ mensaje: "API funcionando" });

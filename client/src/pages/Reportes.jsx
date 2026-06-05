@@ -109,15 +109,15 @@ function Collapsible({ title, badge, defaultOpen = false, children }) {
 
 function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigate }) {
   const [tab, setTab] = useState("empresas");
-  const [parqueSel, setParqueSel] = useState("");
+  const [parqueSel, setParqueSel] = useState("todos");
 
   const parquesUnicos = [...new Map(
     empresasIncompletas.map((e) => [e.parqueId || e.parque, { id: e.parqueId || e.parque, nombre: e.parque }])
   ).values()];
 
-  const empresasFiltradas = parqueSel
+  const empresasFiltradas = parqueSel && parqueSel !== "todos"
     ? empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel)
-    : [];
+    : empresasIncompletas;
 
   const badgeBtn = {
     ...s.badge("red"),
@@ -130,7 +130,7 @@ function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigat
     <div>
       <div style={s.tabs}>
         {[["empresas", "Empresas"], ["parques", "Parques"]].map(([key, label]) => (
-          <button key={key} style={s.tab(tab === key)} onClick={() => { setTab(key); setParqueSel(""); }}>{label}</button>
+          <button key={key} style={s.tab(tab === key)} onClick={() => { setTab(key); setParqueSel("todos"); }}>{label}</button>
         ))}
       </div>
 
@@ -140,7 +140,7 @@ function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigat
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", flexShrink: 0 }}>Parque:</span>
             <div style={{ position: "relative", minWidth: 200 }}>
               <select value={parqueSel} onChange={(e) => setParqueSel(e.target.value)} style={s.selectInput}>
-                <option value="">Selecciona un parque…</option>
+                <option value="todos">Todos los parques</option>
                 {parquesUnicos.map((p) => (
                   <option key={p.id} value={p.id}>{p.nombre}</option>
                 ))}
@@ -149,43 +149,37 @@ function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigat
             </div>
           </div>
 
-          {!parqueSel ? (
-            <div style={{ padding: "24px 0", textAlign: "center", color: "rgba(255,255,255,0.15)", fontSize: 12 }}>
-              Selecciona un parque para ver sus empresas incompletas
-            </div>
-          ) : (
-            <table style={s.table}>
-              <thead>
-                <tr>{["Empresa", "Campos incompletos"].map((h) => <th key={h} style={s.th}>{h}</th>)}</tr>
-              </thead>
-              <tbody>
-                {empresasFiltradas.length === 0 ? (
-                  <tr><td colSpan={2} style={{ ...s.td, textAlign: "center", color: "rgba(255,255,255,0.15)", padding: "28px 0" }}>Sin empresas incompletas en este parque</td></tr>
-                ) : empresasFiltradas.map((emp) => (
-                  <tr key={emp._id}
-                    onMouseEnter={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)")}
-                    onMouseLeave={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "transparent")}
-                  >
-                    <td style={{ ...s.td, fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{emp.empresa}</td>
-                    <td style={s.td}>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                        {emp.faltantes.map((f) => (
-                          <button
-                            key={f}
-                            onClick={() => navigate(`/empresas?parque=${emp.parqueId || ""}&search=${encodeURIComponent(emp.empresa)}`)}
-                            style={badgeBtn}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.18)"}
-                            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.08)"}
-                            title="Ir a editar esta empresa"
-                          >{f}</button>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <table style={s.table}>
+            <thead>
+              <tr>{["Empresa", "Campos incompletos"].map((h) => <th key={h} style={s.th}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {empresasFiltradas.length === 0 ? (
+                <tr><td colSpan={2} style={{ ...s.td, textAlign: "center", color: "rgba(255,255,255,0.15)", padding: "28px 0" }}>Sin empresas incompletas</td></tr>
+              ) : empresasFiltradas.map((emp) => (
+                <tr key={emp._id}
+                  onMouseEnter={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)")}
+                  onMouseLeave={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "transparent")}
+                >
+                  <td style={{ ...s.td, fontSize: 13, color: "rgba(255,255,255,0.75)", fontWeight: 500 }}>{emp.empresa}</td>
+                  <td style={s.td}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {emp.faltantes.map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => navigate(`/empresas?parque=${emp.parqueId || ""}&search=${encodeURIComponent(emp.empresa)}`)}
+                          style={badgeBtn}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.18)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.08)"}
+                          title="Ir a editar esta empresa"
+                        >{f}</button>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </>
       )}
 

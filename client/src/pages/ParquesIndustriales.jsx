@@ -5,6 +5,7 @@ import ParqueForm from "../components/parques/ParqueForm";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Pencil, Trash2, Search, MapPin, X } from "lucide-react";
+import api from "../services/api";
 
 import {
   getParques,
@@ -153,37 +154,69 @@ export default function ParquesIndustriales() {
   };
 
   const handleUpdate = async (data) => {
-    try {
-      await updateParque(editingParque._id, data);
-      await cargarParques();
-      setEditingParque(null);
-      Swal.fire({ icon: "success", title: "Parque actualizado", timer: 1400, showConfirmButton: false });
-    } catch {
-      Swal.fire({ icon: "error", title: "Error", text: "No se pudo actualizar" });
-    }
-  };
+  const { value: password } = await Swal.fire({
+    title: "Confirmar edición",
+    input: "password",
+    inputLabel: "Ingresa tu contraseña para continuar",
+    inputPlaceholder: "Contraseña",
+    showCancelButton: true,
+    confirmButtonColor: "#3b82f6",
+    cancelButtonColor: "#475569",
+    confirmButtonText: "Confirmar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
 
-  const handleDelete = async (id) => {
-    const result = await Swal.fire({
-      title: "¿Eliminar parque industrial?",
-      text: "Esta acción no se puede deshacer.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      cancelButtonColor: "#475569",
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-      reverseButtons: true,
-    });
-    if (!result.isConfirmed) return;
-    try {
-      await deleteParque(id);
-      await cargarParques();
-      Swal.fire({ icon: "success", title: "Parque eliminado", timer: 1400, showConfirmButton: false });
-    } catch {
-      Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar el parque" });
-    }
-  };
+  if (!password) return;
+
+  try {
+    await api.post("/auth/verify-password", { password });
+  } catch {
+    Swal.fire({ icon: "error", title: "Contraseña incorrecta", timer: 1400, showConfirmButton: false });
+    return;
+  }
+
+  try {
+    await updateParque(editingParque._id, data);
+    await cargarParques();
+    setEditingParque(null);
+    Swal.fire({ icon: "success", title: "Parque actualizado", timer: 1400, showConfirmButton: false });
+  } catch {
+    Swal.fire({ icon: "error", title: "Error", text: "No se pudo actualizar" });
+  }
+};
+
+const handleDelete = async (id) => {
+  const { value: password } = await Swal.fire({
+    title: "Confirmar eliminación",
+    input: "password",
+    inputLabel: "Ingresa tu contraseña para continuar",
+    inputPlaceholder: "Contraseña",
+    showCancelButton: true,
+    confirmButtonColor: "#dc2626",
+    cancelButtonColor: "#475569",
+    confirmButtonText: "Eliminar",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
+
+  if (!password) return;
+
+  try {
+    await api.post("/auth/verify-password", { password });
+  } catch {
+    Swal.fire({ icon: "error", title: "Contraseña incorrecta", timer: 1400, showConfirmButton: false });
+    return;
+  }
+
+  try {
+    await deleteParque(id);
+    await cargarParques();
+    Swal.fire({ icon: "success", title: "Parque eliminado", timer: 1400, showConfirmButton: false });
+  } catch {
+    Swal.fire({ icon: "error", title: "Error", text: "No se pudo eliminar el parque" });
+  }
+};
 
   const parquesFiltrados = parques.filter((p) => {
     const q = search.toLowerCase();
