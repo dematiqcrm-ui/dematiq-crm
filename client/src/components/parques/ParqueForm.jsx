@@ -2549,7 +2549,11 @@ const ESTADOS = Object.keys(ESTADOS_MUNICIPIOS).sort((a, b) =>
   a.localeCompare(b, "es")
 );
 
-export default function ParqueForm({ initialData, onSubmit, onCancel }) {
+export default function ParqueForm({
+  initialData,
+  onSubmit,
+  onCancel,
+}) {
   const [form, setForm] = useState({
     nombre: "",
     estado: "",
@@ -2563,6 +2567,7 @@ export default function ParqueForm({ initialData, onSubmit, onCancel }) {
   useEffect(() => {
     if (initialData) {
       const estado = initialData.estado || "";
+
       setForm({
         nombre: initialData.nombre || "",
         estado,
@@ -2570,20 +2575,29 @@ export default function ParqueForm({ initialData, onSubmit, onCancel }) {
         direccion: initialData.direccion || "",
         notas: initialData.notas || "",
       });
-      if (estado) {
-        setMunicipios(ESTADOS_MUNICIPIOS[estado] || []);
-      }
+
+      setMunicipios(ESTADOS_MUNICIPIOS[estado] || []);
     }
   }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     if (name === "estado") {
-      setForm((prev) => ({ ...prev, estado: value, municipio: "" }));
+      setForm((prev) => ({
+        ...prev,
+        estado: value,
+        municipio: "",
+      }));
+
       setMunicipios(ESTADOS_MUNICIPIOS[value] || []);
-    } else {
-      setForm((prev) => ({ ...prev, [name]: value }));
+      return;
     }
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = (e) => {
@@ -2591,110 +2605,314 @@ export default function ParqueForm({ initialData, onSubmit, onCancel }) {
     onSubmit(form);
   };
 
-  const inputClass =
-    "w-full p-3 rounded bg-slate-800 text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500";
-
-  const selectClass =
-    "w-full p-3 rounded bg-slate-800 text-white appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40 disabled:cursor-not-allowed";
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* Nombre */}
-      <input
-        type="text"
-        name="nombre"
-        placeholder="Nombre del parque"
-        value={form.nombre}
-        onChange={handleChange}
-        className={inputClass}
-        required
-      />
+    <>
+      <style>{`
+        .pf-input {
+          width: 100%;
+          height: 38px;
+          padding: 0 12px;
+          border-radius: 8px;
+          background: #131720;
+          color: #e2e8f0;
+          border: 1px solid rgba(255,255,255,0.1);
+          font-size: 13px;
+          outline: none;
+          transition: border-color .15s, box-shadow .15s;
+          box-sizing: border-box;
+          appearance: none;
+        }
 
-      {/* Estado */}
-      <div className="relative">
-        <select
-          name="estado"
-          value={form.estado}
-          onChange={handleChange}
-          className={selectClass}
-          required
-        >
-          <option value="" disabled>
-            Selecciona un estado
-          </option>
-          {ESTADOS.map((e) => (
-            <option key={e} value={e}>
-              {e}
-            </option>
-          ))}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
-          ▾
+        .pf-input::placeholder {
+          color: rgba(255,255,255,.22);
+        }
+
+        .pf-input:focus {
+          border-color: rgba(99,130,246,.6);
+          box-shadow: 0 0 0 3px rgba(99,130,246,.12);
+        }
+
+        .pf-select {
+          width: 100%;
+          height: 38px;
+          padding: 0 12px;
+          border-radius: 8px;
+          background: #131720;
+          color: #e2e8f0;
+          border: 1px solid rgba(255,255,255,0.1);
+          font-size: 13px;
+          outline: none;
+          cursor: pointer;
+          appearance: none;
+          transition: border-color .15s, box-shadow .15s;
+        }
+
+        .pf-select:focus {
+          border-color: rgba(99,130,246,.6);
+          box-shadow: 0 0 0 3px rgba(99,130,246,.12);
+        }
+
+        .pf-select:disabled {
+          opacity: .45;
+          cursor: not-allowed;
+        }
+
+        .pf-textarea {
+          width: 100%;
+          padding: 10px 12px;
+          border-radius: 8px;
+          background: #131720;
+          color: #e2e8f0;
+          border: 1px solid rgba(255,255,255,0.1);
+          font-size: 13px;
+          resize: none;
+          outline: none;
+          box-sizing: border-box;
+          transition: border-color .15s, box-shadow .15s;
+        }
+
+        .pf-textarea::placeholder {
+          color: rgba(255,255,255,.22);
+        }
+
+        .pf-textarea:focus {
+          border-color: rgba(99,130,246,.6);
+          box-shadow: 0 0 0 3px rgba(99,130,246,.12);
+        }
+
+        .pf-label {
+          display: block;
+          font-size: 10.5px;
+          font-weight: 600;
+          color: rgba(255,255,255,.35);
+          text-transform: uppercase;
+          letter-spacing: .08em;
+          margin-bottom: 5px;
+        }
+
+        .pf-section-title {
+          font-size: 11px;
+          font-weight: 600;
+          color: rgba(255,255,255,.25);
+          text-transform: uppercase;
+          letter-spacing: .09em;
+          padding-bottom: 8px;
+          border-bottom: 1px solid rgba(255,255,255,.06);
+          margin-bottom: 12px;
+        }
+
+        .pf-divider {
+          border: none;
+          border-top: 1px solid rgba(255,255,255,.06);
+          margin: 2px 0;
+        }
+
+        .pf-required {
+          font-size: 10px;
+          color: rgba(248,113,113,.75);
+          margin-left: 4px;
+          text-transform: none;
+          letter-spacing: 0;
+        }
+
+        .pf-btn-cancel {
+          height: 38px;
+          padding: 0 18px;
+          border-radius: 8px;
+          background: rgba(255,255,255,.05);
+          border: 1px solid rgba(255,255,255,.1);
+          color: rgba(255,255,255,.6);
+          font-size: 13px;
+          cursor: pointer;
+          transition: .15s;
+        }
+
+        .pf-btn-cancel:hover {
+          background: rgba(255,255,255,.08);
+          color: rgba(255,255,255,.8);
+        }
+
+        .pf-btn-submit {
+          height: 38px;
+          padding: 0 20px;
+          border-radius: 8px;
+          background: #3b5bff;
+          border: 1px solid rgba(99,130,246,.4);
+          color: white;
+          font-size: 13px;
+          cursor: pointer;
+          transition: .15s;
+        }
+
+        .pf-btn-submit:hover {
+          background: #2e4ee0;
+        }
+      `}</style>
+
+      <form
+        onSubmit={handleSubmit}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
+        <div className="pf-section-title">
+          Información del parque industrial
         </div>
-      </div>
 
-      {/* Municipio */}
-      <div className="relative">
-        <select
-          name="municipio"
-          value={form.municipio}
-          onChange={handleChange}
-          className={selectClass}
-          required
-          disabled={!form.estado}
-        >
-          <option value="" disabled>
-            {form.estado
-              ? "Selecciona un municipio"
-              : "Primero selecciona un estado"}
-          </option>
-          {municipios.map((m) => (
-            <option key={m} value={m}>
-              {m}
-            </option>
-          ))}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400">
-          ▾
+        <div>
+          <label className="pf-label">
+            Nombre del parque
+            <span className="pf-required">requerido</span>
+          </label>
+
+          <input
+            type="text"
+            name="nombre"
+            placeholder="Nombre del parque"
+            value={form.nombre}
+            onChange={handleChange}
+            className="pf-input"
+            required
+          />
         </div>
-      </div>
 
-      {/* Dirección */}
-      <input
-        type="text"
-        name="direccion"
-        placeholder="Dirección"
-        value={form.direccion}
-        onChange={handleChange}
-        className={inputClass}
-      />
-
-      {/* Notas */}
-      <textarea
-        name="notas"
-        placeholder="Notas"
-        value={form.notas}
-        onChange={handleChange}
-        className={`${inputClass} resize-none`}
-        rows="4"
-      />
-
-      {/* Botones */}
-      <div className="flex justify-end gap-3">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 bg-slate-700 rounded hover:bg-slate-600 transition-colors"
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 10,
+          }}
         >
-          Cancelar
-        </button>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+          <div>
+            <label className="pf-label">Estado</label>
+
+            <div style={{ position: "relative" }}>
+              <select
+                name="estado"
+                value={form.estado}
+                onChange={handleChange}
+                className="pf-select"
+                required
+              >
+                <option value="">Selecciona un estado</option>
+
+                {ESTADOS.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
+                  </option>
+                ))}
+              </select>
+
+              <div
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  color: "rgba(255,255,255,.35)",
+                }}
+              >
+                ▾
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="pf-label">Municipio</label>
+
+            <div style={{ position: "relative" }}>
+              <select
+                name="municipio"
+                value={form.municipio}
+                onChange={handleChange}
+                className="pf-select"
+                required
+                disabled={!form.estado}
+              >
+                <option value="">
+                  {form.estado
+                    ? "Selecciona un municipio"
+                    : "Primero selecciona un estado"}
+                </option>
+
+                {municipios.map((municipio) => (
+                  <option key={municipio} value={municipio}>
+                    {municipio}
+                  </option>
+                ))}
+              </select>
+
+              <div
+                style={{
+                  position: "absolute",
+                  right: 12,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  pointerEvents: "none",
+                  color: "rgba(255,255,255,.35)",
+                }}
+              >
+                ▾
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="pf-label">Dirección</label>
+
+          <input
+            type="text"
+            name="direccion"
+            placeholder="Calle, número, colonia..."
+            value={form.direccion}
+            onChange={handleChange}
+            className="pf-input"
+          />
+        </div>
+
+        <hr className="pf-divider" />
+
+        <div>
+          <label className="pf-label">Notas del parque</label>
+
+          <textarea
+            name="notas"
+            placeholder="Información adicional, observaciones..."
+            value={form.notas}
+            onChange={handleChange}
+            rows={4}
+            className="pf-textarea"
+          />
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            paddingTop: 4,
+          }}
         >
-          Guardar
-        </button>
-      </div>
-    </form>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="pf-btn-cancel"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="submit"
+            className="pf-btn-submit"
+          >
+            Guardar
+          </button>
+        </div>
+      </form>
+    </>
   );
 }

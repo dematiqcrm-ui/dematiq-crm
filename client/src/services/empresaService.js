@@ -27,6 +27,23 @@ export const getEmpresa = async (
   return data;
 };
 
+export const registrarCorreo =
+  async (
+    empresaId,
+    correo
+  ) => {
+    const { data } =
+      await api.put(
+        "/empresas/correo",
+        {
+          empresaId,
+          correo,
+        }
+      );
+
+    return data;
+  };
+
 export const createEmpresa =
   async (empresaData) => {
     const { data } =
