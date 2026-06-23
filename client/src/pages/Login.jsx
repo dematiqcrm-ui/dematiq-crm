@@ -7,7 +7,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const [email, setEmail] = useState("");
+  const [usuario, setUsuario] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -21,11 +21,11 @@ export default function Login() {
     const saved = localStorage.getItem("dematiq_remember");
     if (saved) {
       try {
-        const { email: savedEmail } = JSON.parse(saved);
-        setEmail(savedEmail);
-        setRememberMe(true);
-      } catch {}
-    }
+    const { usuario: savedUsuario } = JSON.parse(saved);
+    setUsuario(savedUsuario);
+    setRememberMe(true);
+   } catch {}
+  }
   }, []);
 
   const handleSubmit = async (e) => {
@@ -34,10 +34,10 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await loginRequest({ email, password });
+      const response = await loginRequest({ usuario, password });
 
       if (rememberMe) {
-        localStorage.setItem("dematiq_remember", JSON.stringify({ email }));
+        localStorage.setItem("dematiq_remember", JSON.stringify({ usuario }));
       } else {
         localStorage.removeItem("dematiq_remember");
       }
@@ -45,7 +45,7 @@ export default function Login() {
       login(response.user, response.token);
       navigate("/parques");
     } catch {
-      setError("Correo o contraseña incorrectos");
+      setError("Usuario o contraseña incorrectos");
     } finally {
       setIsLoading(false);
     }
@@ -85,21 +85,21 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} style={styles.form}>
           {/* Email field */}
-          <div style={styles.fieldGroup}>
-            <label style={styles.label}>Correo electrónico</label>
+            <div style={styles.fieldGroup}>
+            <label style={styles.label}>Usuario</label>
             <div style={styles.inputWrapper}>
               <svg style={styles.inputIcon} width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <rect x="1" y="3" width="14" height="10" rx="2" stroke="#64748b" strokeWidth="1.25" />
-                <path d="M1 5.5l7 4 7-4" stroke="#64748b" strokeWidth="1.25" strokeLinecap="round" />
+                <circle cx="8" cy="5" r="3" stroke="#64748b" strokeWidth="1.25" />
+                <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="#64748b" strokeWidth="1.25" strokeLinecap="round" />
               </svg>
               <input
                 style={styles.input}
-                type="email"
-                placeholder="nombre@empresa.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                type="text"
+                placeholder="Usuario"
+                value={usuario}
+                onChange={(e) => setUsuario(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete="username"
                 onFocus={e => e.target.parentElement.setAttribute("data-focused", "true")}
                 onBlur={e => e.target.parentElement.removeAttribute("data-focused")}
               />

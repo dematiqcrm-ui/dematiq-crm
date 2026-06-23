@@ -8,7 +8,8 @@ import empresaRoutes from "./routes/empresaRoutes.js";
 import reporteRoutes from "./routes/reporteRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import exportRoutes from "./routes/exportRoutes.js";
-import correoRoutes from "./routes/correoRoutes.js"; // ← agregar
+import correoRoutes from "./routes/correoRoutes.js";
+import cuentaCorreoRoutes from "./routes/cuentaCorreoRoutes.js"; // ← agregar
 
 dotenv.config();
 
@@ -25,12 +26,13 @@ app.use(
 );
 app.use(express.json());
 
-app.use("/api/parques",  parqueRoutes);
-app.use("/api/empresas", empresaRoutes);
-app.use("/api/reportes", reporteRoutes);
-app.use("/api/auth",     authRoutes);
-app.use("/api/correo",   correoRoutes); // ← agregar
-app.use("/api",          exportRoutes);
+app.use("/api/parques",        parqueRoutes);
+app.use("/api/empresas",       empresaRoutes);
+app.use("/api/reportes",       reporteRoutes);
+app.use("/api/auth",           authRoutes);
+app.use("/api/correo",         correoRoutes);
+app.use("/api/cuentas-correo", cuentaCorreoRoutes); // ← agregar
+app.use("/api",                exportRoutes);
 
 app.get("/", (req, res) => {
   res.json({ mensaje: "API funcionando" });

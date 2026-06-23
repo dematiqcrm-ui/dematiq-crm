@@ -8,6 +8,7 @@ const historialSchema = new mongoose.Schema(
     asunto: { type: String },
     mensaje: { type: String },
     enviadoPor: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    cuentaRemitente: { type: String },
   },
   { timestamps: true }
 );

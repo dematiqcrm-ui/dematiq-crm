@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import Layout from "../components/layout/Layout";
 import { useAuth } from "../hooks/useAuth";
 import { getResumen } from "../services/reporteService";
+import { getCuentas, createCuenta, deleteCuenta, testCuenta } from "../services/cuentaCorreoService";
 
 import {
   User, Moon, Sun, Lock, Database, Download,
   FileSpreadsheet, FileText, Wifi, Clock, Tag,
   CheckCircle, AlertCircle, Loader2, ShieldCheck,
-  Eye, EyeOff, KeyRound,
+  Eye, EyeOff, KeyRound, Mail, Plus,
 } from "lucide-react";
 
 const PIN_SECRETO = "1234";
@@ -28,6 +29,7 @@ const downloadFromBackend = async (url) => {
   const contentDisposition = res.headers.get("Content-Disposition") || "";
   const match = contentDisposition.match(/filename="(.+)"/);
   const filename = match ? match[1] : "export";
+  
 
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
@@ -161,6 +163,12 @@ export default function Configuracion() {
   const [apiStatus, setApiStatus]             = useState("checking");
   const [exporting, setExporting]             = useState(null);
   const [sistemaDesbloqueado, setSistemaDesbloqueado] = useState(false);
+  const [tablaExport, setTablaExport] = useState("todo");
+  const [cuentas, setCuentas]           = useState([]);
+  const [cuentaForm, setCuentaForm]     = useState({ nombre: "", email: "", password: "", servicio: "gmail" });
+  const [mostrarFormCuenta, setMostrarFormCuenta] = useState(false);
+  const [testingCuenta, setTestingCuenta] = useState(null);
+
 
   // ─── Funciones de carga ────────────────────────────────────────────────────
   const cargarResumen = useCallback(async () => {
@@ -181,6 +189,52 @@ export default function Configuracion() {
     }
   }, []);
 
+  const cargarCuentas = useCallback(async () => {
+  try {
+    const data = await getCuentas();
+    setCuentas(data);
+  } catch (err) {
+    console.error(err);
+  }
+}, []);
+
+const handleCreateCuenta = async () => {
+  if (!cuentaForm.nombre || !cuentaForm.email || !cuentaForm.password) {
+    alert("Completa todos los campos");
+    return;
+  }
+  try {
+    await createCuenta(cuentaForm);
+    await cargarCuentas();
+    setCuentaForm({ nombre: "", email: "", password: "", servicio: "gmail" });
+    setMostrarFormCuenta(false);
+  } catch {
+    alert("No se pudo guardar la cuenta");
+  }
+};
+
+const handleDeleteCuenta = async (id) => {
+  if (!confirm("¿Eliminar esta cuenta?")) return;
+  try {
+    await deleteCuenta(id);
+    await cargarCuentas();
+  } catch {
+    alert("No se pudo eliminar la cuenta");
+  }
+};
+
+const handleTestCuenta = async (id) => {
+  setTestingCuenta(id);
+  try {
+    await testCuenta(id);
+    alert("Correo de prueba enviado correctamente");
+  } catch {
+    alert("No se pudo conectar con esta cuenta");
+  } finally {
+    setTestingCuenta(null);
+  }
+};
+
   // ─── Tema ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     localStorage.setItem("theme", theme);
@@ -195,9 +249,10 @@ export default function Configuracion() {
 
   // ─── Carga inicial ─────────────────────────────────────────────────────────
   useEffect(() => {
-    cargarResumen();
-    checkApiStatus();
-  }, [cargarResumen, checkApiStatus]);
+  cargarResumen();
+  checkApiStatus();
+  cargarCuentas();
+}, [cargarResumen, checkApiStatus, cargarCuentas]);
 
   // ─── Contraseña ────────────────────────────────────────────────────────────
   const handlePasswordChange = () => {
@@ -219,22 +274,22 @@ export default function Configuracion() {
   };
 
   // ─── Exportaciones ─────────────────────────────────────────────────────────
-  const handleExport = async (type) => {
-    setExporting(type);
-    try {
-      const endpoints = {
-        excel:  "http://localhost:5000/api/export/excel",
-        pdf:    "http://localhost:5000/api/export/pdf",
-        backup: "http://localhost:5000/api/export/backup",
-      };
-      await downloadFromBackend(endpoints[type]);
-    } catch (err) {
-      console.error(`Error exportando ${type}:`, err);
-      alert(`No se pudo exportar: ${err.message}`);
-    } finally {
-      setExporting(null);
-    }
-  };
+ const handleExport = async (type, tabla = "todo") => {
+  setExporting(type);
+  try {
+    const endpoints = {
+      excel:  `http://localhost:5000/api/export/excel?tabla=${tabla}`,
+      pdf:    `http://localhost:5000/api/export/pdf?tabla=${tabla}`,
+      backup: `http://localhost:5000/api/export/backup?tabla=${tabla}`,
+    };
+    await downloadFromBackend(endpoints[type]);
+  } catch (err) {
+    console.error(`Error exportando ${type}:`, err);
+    alert(`No se pudo exportar: ${err.message}`);
+  } finally {
+    setExporting(null);
+  }
+};
 
   const lastAccess = new Date().toLocaleDateString("es-MX", {
     weekday: "long", year: "numeric", month: "long", day: "numeric",
@@ -355,22 +410,36 @@ export default function Configuracion() {
             <PinGuard onSuccess={() => setSistemaDesbloqueado(true)} />
           ) : (
             <div className="space-y-4">
-              <ExportBtn type="excel"
-                icon={<FileSpreadsheet size={20} className="text-green-400" />}
-                label="Exportar Excel — toda la BD"
-                hoverBorder="hover:border-green-500" spinColor="text-green-400"
-                exporting={exporting} onExport={handleExport} />
-              <ExportBtn type="pdf"
-                icon={<FileText size={20} className="text-red-400" />}
-                label="Exportar PDF — toda la BD"
-                hoverBorder="hover:border-red-500" spinColor="text-red-400"
-                exporting={exporting} onExport={handleExport} />
-              <ExportBtn type="backup"
-                icon={<Database size={20} className="text-blue-400" />}
-                label="Respaldo JSON — toda la BD"
-                hoverBorder="hover:border-blue-500" spinColor="text-blue-400"
-                exporting={exporting} onExport={handleExport} />
-
+              {/* Selector de tabla */}
+            <div className="flex gap-2 mb-2">
+              {["todo", "empresas", "parques"].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTablaExport(t)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all capitalize
+                    ${tablaExport === t
+                      ? "bg-blue-600/20 border-blue-500 text-blue-300"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"}`}
+                >
+                  {t === "todo" ? "Todo" : t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+            <ExportBtn type="excel"
+              icon={<FileSpreadsheet size={20} className="text-green-400" />}
+              label={`Exportar Excel — ${tablaExport}`}
+              hoverBorder="hover:border-green-500" spinColor="text-green-400"
+              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
+            <ExportBtn type="pdf"
+              icon={<FileText size={20} className="text-red-400" />}
+              label={`Exportar PDF — ${tablaExport}`}
+              hoverBorder="hover:border-red-500" spinColor="text-red-400"
+              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
+            <ExportBtn type="backup"
+              icon={<Database size={20} className="text-blue-400" />}
+              label={`Respaldo JSON — ${tablaExport}`}
+              hoverBorder="hover:border-blue-500" spinColor="text-blue-400"
+              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
               {/* Volver a bloquear */}
               <button
                 onClick={() => setSistemaDesbloqueado(false)}
@@ -384,6 +453,123 @@ export default function Configuracion() {
           )}
         </div>
       </div>
+
+        {/* CUENTAS DE CORREO */}
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6 xl:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Mail size={22} className="text-purple-400" />
+              <h2 className="text-xl font-semibold">Cuentas de correo</h2>
+            </div>
+            <button
+              onClick={() => setMostrarFormCuenta((v) => !v)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600/20 border border-purple-500/40 text-purple-300 text-sm font-medium hover:bg-purple-600/30 transition-all"
+            >
+              <Plus size={14} />
+              Agregar cuenta
+            </button>
+          </div>
+
+          {/* Formulario nueva cuenta */}
+          {mostrarFormCuenta && (
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 mb-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Nombre</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Ventas"
+                  value={cuentaForm.nombre}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, nombre: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Servicio</label>
+                <select
+                  value={cuentaForm.servicio}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, servicio: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm"
+                >
+                  <option value="gmail">Gmail</option>
+                  <option value="hotmail">Outlook/Hotmail</option>
+                  <option value="yahoo">Yahoo</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Correo</label>
+                <input
+                  type="email"
+                  placeholder="correo@gmail.com"
+                  value={cuentaForm.email}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, email: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Contraseña de app</label>
+                <input
+                  type="password"
+                  placeholder="••••••••••••••••"
+                  value={cuentaForm.password}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, password: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                />
+              </div>
+              <div className="col-span-2 flex gap-2 justify-end">
+                <button
+                  onClick={() => setMostrarFormCuenta(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-300 text-sm hover:bg-slate-600 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateCuenta}
+                  className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-500 transition-all"
+                >
+                  Guardar cuenta
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Lista de cuentas */}
+          {cuentas.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 text-sm">
+              No hay cuentas configuradas
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {cuentas.map((c) => (
+                <div key={c._id} className="flex items-center justify-between p-4 rounded-xl bg-slate-800 border border-slate-700">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                      <Mail size={14} className="text-purple-400" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-white">{c.nombre}</div>
+                      <div className="text-xs text-slate-400">{c.email} — {c.servicio}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleTestCuenta(c._id)}
+                      disabled={testingCuenta === c._id}
+                      className="px-3 py-1.5 rounded-lg bg-green-600/15 border border-green-600/30 text-green-400 text-xs font-medium hover:bg-green-600/25 transition-all disabled:opacity-50"
+                    >
+                      {testingCuenta === c._id ? "Probando..." : "Probar"}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCuenta(c._id)}
+                      className="px-3 py-1.5 rounded-lg bg-red-600/15 border border-red-600/30 text-red-400 text-xs font-medium hover:bg-red-600/25 transition-all"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
       {/* RESUMEN */}
       <div className="mt-8 bg-slate-900 rounded-2xl border border-slate-800 p-6">

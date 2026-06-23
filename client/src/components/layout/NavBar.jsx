@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { Bell, LogOut, X, CheckCheck } from "lucide-react";
+import { Bell, LogOut, X, CheckCheck, Eye } from "lucide-react";
+import { useAccesibilidad } from "../../context/AccesibilidadContext";
+
 
 const routeNames = {
   "/clientes": "Clientes",
@@ -10,6 +12,7 @@ const routeNames = {
   "/parques": "Parques industriales",
   "/empresas": "Empresas",
 };
+
 
 // Mock de notificaciones — reemplaza con tu API real
 const MOCK_NOTIFICATIONS = [
@@ -40,6 +43,7 @@ export default function Navbar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { altoContraste, toggleAltoContraste } = useAccesibilidad();
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
@@ -66,6 +70,29 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  useEffect(() => {
+  const styleId = "alto-contraste-style";
+  let existing = document.getElementById(styleId);
+
+  if (altoContraste) {
+    if (!existing) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.innerHTML = `
+        * { color: #ffffff !important; }
+        a { color: #60a5fa !important; }
+        input, textarea, select { color: #ffffff !important; background-color: #1a1f2e !important; }
+        [style*="background"] { background-color: inherit; }
+      `;
+      document.head.appendChild(style);
+    }
+  } else {
+    if (existing) existing.remove();
+  }
+
+  document.body.style.filter = "";
+}, [altoContraste]);
+
   const markAllRead = () =>
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
 
@@ -90,7 +117,18 @@ export default function Navbar() {
 
       {/* Derecha */}
       <div style={s.right}>
-
+        {/* Alto contraste */}
+          <button
+            onClick={toggleAltoContraste}
+            title="Alto contraste"
+            style={{
+              ...s.iconBtn,
+              background: altoContraste ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.04)",
+              borderColor: altoContraste ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.08)",
+            }}
+          >
+            <Eye size={14} color={altoContraste ? "#fff" : "rgba(255,255,255,0.55)"} />
+          </button>
         {/* Notificaciones */}
         <div ref={notifRef} style={{ position: "relative" }}>
           <button

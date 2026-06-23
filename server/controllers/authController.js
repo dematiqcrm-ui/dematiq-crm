@@ -32,11 +32,15 @@ export const register = async (req, res) => {
 };
 
 // LOGIN
+
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { usuario, password } = req.body;
+    console.log("usuario recibido:", usuario);
+    console.log("password recibido:", password);
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ usuario });
+    console.log("usuario encontrado:", user);
 
     if (!user) {
       return res.status(400).json({
@@ -56,13 +60,9 @@ export const login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      {
-        id: user._id,
-      },
+      { id: user._id },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
+      { expiresIn: "7d" }
     );
 
     res.json({
@@ -86,7 +86,7 @@ export const updateProfile = async (
   res
 ) => {
   try {
-    const { nombre, email } = req.body;
+    const { usuario, password } = req.body;
 
     const user = await User.findByIdAndUpdate(
       req.user.id,

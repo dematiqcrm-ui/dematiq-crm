@@ -107,13 +107,14 @@ function Collapsible({ title, badge, defaultOpen = false, children }) {
   );
 }
 
-function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigate }) {
+function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigate, parqueSel, setParqueSel }) {
   const [tab, setTab] = useState("empresas");
-  const [parqueSel, setParqueSel] = useState("todos");
 
   const parquesUnicos = [...new Map(
-    empresasIncompletas.map((e) => [e.parqueId || e.parque, { id: e.parqueId || e.parque, nombre: e.parque }])
-  ).values()];
+  empresasIncompletas
+    .filter((e) => (e.parqueId || e.parque) && e.parque)
+    .map((e) => [e.parqueId || e.parque, { id: e.parqueId || e.parque, nombre: e.parque }])
+).values()];
 
   const empresasFiltradas = parqueSel && parqueSel !== "todos"
     ? empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel)
@@ -277,6 +278,7 @@ export default function Reportes() {
   const [empresasEstado, setEmpresasEstado] = useState([]);
   const [empresasByParque, setEmpresasByParque] = useState([]);
   const [chartTab, setChartTab] = useState("estado");
+  const [parqueSel, setParqueSel] = useState("todos");
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -297,7 +299,9 @@ export default function Reportes() {
     } catch (error) { console.error(error); }
   };
 
-  const totalIncompletos = empresasIncompletas.length + parquesIncompletos.length;
+const totalIncompletos = parqueSel === "todos"
+  ? empresasIncompletas.length + parquesIncompletos.length
+  : empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel).length;
 
   return (
     <Layout>
@@ -350,10 +354,12 @@ export default function Reportes() {
         {/* Incompletos */}
         <Collapsible title="Datos incompletos" badge={totalIncompletos} defaultOpen={true}>
           <IncompletesDrilldown
-            empresasIncompletas={empresasIncompletas}
-            parquesIncompletos={parquesIncompletos}
-            navigate={navigate}
-          />
+          empresasIncompletas={empresasIncompletas}
+          parquesIncompletos={parquesIncompletos}
+          navigate={navigate}
+          parqueSel={parqueSel}
+          setParqueSel={setParqueSel}
+        />
         </Collapsible>
       </div>
     </Layout>

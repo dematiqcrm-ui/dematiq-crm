@@ -6,3 +6,17 @@ body {
   background: #0f172a;
   color: white;
 }
+
+[data-contraste="alto"] * {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+[data-contraste="alto"] a {
+  color: #60a5fa !important;
+}
+
+[data-contraste="alto"] input,
+[data-contraste="alto"] textarea,
+[data-contraste="alto"] select {
+  color: #e2e8f0 !important;
+}
