@@ -107,14 +107,14 @@ function Collapsible({ title, badge, defaultOpen = false, children }) {
   );
 }
 
-function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigate, parqueSel, setParqueSel }) {
-  const [tab, setTab] = useState("empresas");
+// ─── tab y setTab vienen del padre ───────────────────────────────────────────
+function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigate, parqueSel, setParqueSel, tab, setTab }) {
 
   const parquesUnicos = [...new Map(
-  empresasIncompletas
-    .filter((e) => (e.parqueId || e.parque) && e.parque)
-    .map((e) => [e.parqueId || e.parque, { id: e.parqueId || e.parque, nombre: e.parque }])
-).values()];
+    empresasIncompletas
+      .filter((e) => (e.parqueId || e.parque) && e.parque)
+      .map((e) => [e.parqueId || e.parque, { id: e.parqueId || e.parque, nombre: e.parque }])
+  ).values()];
 
   const empresasFiltradas = parqueSel && parqueSel !== "todos"
     ? empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel)
@@ -127,11 +127,17 @@ function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigat
     background: "rgba(248,113,113,0.08)",
   };
 
+  // Al cambiar de tab, resetear el filtro de parque
+  const handleTabChange = (key) => {
+    setTab(key);
+    setParqueSel("todos");
+  };
+
   return (
     <div>
       <div style={s.tabs}>
-        {[["empresas", "Empresas"], ["parques", "Parques"]].map(([key, label]) => (
-          <button key={key} style={s.tab(tab === key)} onClick={() => { setTab(key); setParqueSel("todos"); }}>{label}</button>
+        {[["empresas", "Empresas"], ["parques", "Parques industriales"]].map(([key, label]) => (
+          <button key={key} style={s.tab(tab === key)} onClick={() => handleTabChange(key)}>{label}</button>
         ))}
       </div>
 
@@ -272,13 +278,16 @@ function GraficaPorParque({ data }) {
 
 export default function Reportes() {
   const navigate = useNavigate();
-  const [resumen, setResumen] = useState({ empresas: 0, parques: 0, contactos: 0 });
+  const [resumen, setResumen]                   = useState({ empresas: 0, parques: 0, contactos: 0 });
   const [empresasIncompletas, setEmpresasIncompletas] = useState([]);
-  const [parquesIncompletos, setParquesIncompletos] = useState([]);
-  const [empresasEstado, setEmpresasEstado] = useState([]);
+  const [parquesIncompletos, setParquesIncompletos]   = useState([]);
+  const [empresasEstado, setEmpresasEstado]     = useState([]);
   const [empresasByParque, setEmpresasByParque] = useState([]);
-  const [chartTab, setChartTab] = useState("estado");
-  const [parqueSel, setParqueSel] = useState("todos");
+  const [chartTab, setChartTab]                 = useState("estado");
+  const [parqueSel, setParqueSel]               = useState("todos");
+
+  // ─── Estado del tab elevado al padre para calcular el badge correctamente ──
+  const [incomplTab, setIncomplTab] = useState("empresas");
 
   useEffect(() => { cargarDatos(); }, []);
 
@@ -299,9 +308,12 @@ export default function Reportes() {
     } catch (error) { console.error(error); }
   };
 
-const totalIncompletos = parqueSel === "todos"
-  ? empresasIncompletas.length + parquesIncompletos.length
-  : empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel).length;
+  // ─── Badge refleja exactamente el tab activo ────────────────────────────────
+  const totalIncompletos = incomplTab === "parques"
+    ? parquesIncompletos.length
+    : parqueSel === "todos"
+      ? empresasIncompletas.length
+      : empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel).length;
 
   return (
     <Layout>
@@ -351,15 +363,17 @@ const totalIncompletos = parqueSel === "todos"
           )}
         </Collapsible>
 
-        {/* Incompletos */}
+        {/* Incompletos — badge reactivo al tab activo */}
         <Collapsible title="Datos incompletos" badge={totalIncompletos} defaultOpen={true}>
           <IncompletesDrilldown
-          empresasIncompletas={empresasIncompletas}
-          parquesIncompletos={parquesIncompletos}
-          navigate={navigate}
-          parqueSel={parqueSel}
-          setParqueSel={setParqueSel}
-        />
+            empresasIncompletas={empresasIncompletas}
+            parquesIncompletos={parquesIncompletos}
+            navigate={navigate}
+            parqueSel={parqueSel}
+            setParqueSel={setParqueSel}
+            tab={incomplTab}
+            setTab={setIncomplTab}
+          />
         </Collapsible>
       </div>
     </Layout>

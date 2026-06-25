@@ -12,8 +12,32 @@ export const enviarCorreo = async (req, res) => {
       contentType: file.mimetype,
     })) || [];
 
+    const cuenta = await CuentaCorreo.findOne({
+  activa: true,
+});
+
+if (!cuenta) {
+  return res.status(400).json({
+    message:
+      "No hay una cuenta de correo configurada",
+  });
+}
+
+const transporter =
+  nodemailer.createTransport({
+    service:
+      cuenta.servicio,
+    auth: {
+      user: cuenta.email,
+      pass: cuenta.password,
+    },
+  });
+
+const remitenteEmail =
+  cuenta.email;
+
     await transporter.sendMail({
-      from: `"DEMATIQ CRM" <${process.env.MAIL_USER}>`,
+      from: `"DEMATIQ CRM" <${remitenteEmail}>`,
       to: destinatario,
       subject: asunto,
       attachments: adjuntos,

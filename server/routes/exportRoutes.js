@@ -20,13 +20,10 @@ router.get("/health", (req, res) => {
 });
 
 // ─── Helper: convierte empresas en filas del directorio ──────────────────────
-// Cada empresa puede tener N contactos → genera N filas (igual que el Excel original)
 const empresasAFilas = (empresas) => {
   const filas = [];
-
   for (const emp of empresas) {
     const contactos = emp.contactos?.length ? emp.contactos : [{}];
-
     contactos.forEach((contacto, idx) => {
       filas.push({
         "NO.":                 idx === 0 ? (emp.numero || "") : "",
@@ -42,44 +39,102 @@ const empresasAFilas = (empresas) => {
       });
     });
   }
-
   return filas;
 };
 
+// ─── Helper: filtra empresas según tipo y valor ───────────────────────────────
+// tipo: "todo" | "estado" | "parque" | "empresa"
+// valor: string con el valor a filtrar (nombre de estado, ID de parque, ID de empresa)
+const filtrarEmpresas = async (tipo, valor) => {
+  if (!tipo || tipo === "todo" || !valor || valor === "todos") {
+    return Empresa.find().lean();
+  }
+  if (tipo === "estado") {
+    // Buscar parques de ese estado, luego empresas de esos parques
+    const parquesDelEstado = await ParqueIndustrial.find({
+      estado: { $regex: new RegExp(`^${valor}$`, "i") },
+    }).lean();
+    const ids = parquesDelEstado.map((p) => String(p._id));
+    return Empresa.find({
+      parqueIndustrialId: { $in: ids },
+    }).lean();
+  }
+  if (tipo === "parque") {
+    return Empresa.find({ parqueIndustrialId: valor }).lean();
+  }
+  if (tipo === "empresa") {
+    return Empresa.find({ _id: valor }).lean();
+  }
+  return Empresa.find().lean();
+};
+
+// ─── Helper: filtra parques según tipo y valor ────────────────────────────────
+const filtrarParques = async (tipo, valor, empresas) => {
+  if (!tipo || tipo === "todo" || !valor || valor === "todos") {
+    return ParqueIndustrial.find().lean();
+  }
+  if (tipo === "estado") {
+    return ParqueIndustrial.find({
+      estado: { $regex: new RegExp(`^${valor}$`, "i") },
+    }).lean();
+  }
+  if (tipo === "parque") {
+    return ParqueIndustrial.find({ _id: valor }).lean();
+  }
+  if (tipo === "empresa") {
+    // Solo el parque al que pertenece esa empresa
+    const emp = empresas[0];
+    if (!emp) return [];
+    return ParqueIndustrial.find({ _id: emp.parqueIndustrialId }).lean();
+  }
+  return ParqueIndustrial.find().lean();
+};
+
+// ─── GET /api/export/filtros — lista estados, parques y empresas ──────────────
+// Usado por el frontend para poblar los selects
+router.get("/export/filtros", protect, async (req, res) => {
+  try {
+    const [parques, empresas] = await Promise.all([
+      ParqueIndustrial.find().select("_id nombre estado municipio").lean(),
+      Empresa.find().select("_id empresa parqueIndustrialId").lean(),
+    ]);
+
+    // Estados únicos (de los parques)
+    const estadosSet = new Set(parques.map((p) => p.estado).filter(Boolean));
+    const estados = [...estadosSet].sort();
+
+    res.json({ estados, parques, empresas });
+  } catch (err) {
+    console.error("Error cargando filtros:", err);
+    res.status(500).json({ error: "Error cargando filtros" });
+  }
+});
+
 // ─── EXPORTAR EXCEL ───────────────────────────────────────────────────────────
+// Query params: tipo (todo|estado|parque|empresa) y valor (el ID o nombre)
 router.get("/export/excel", protect, async (req, res) => {
   try {
-    const parques  = await ParqueIndustrial.find().lean();
-    const empresas = await Empresa.find().lean();
+    const { tipo = "todo", valor = "" } = req.query;
+
+    const empresas = await filtrarEmpresas(tipo, valor);
+    const parques  = await filtrarParques(tipo, valor, empresas);
 
     const wb = XLSX.utils.book_new();
 
-    // Una hoja por parque industrial
     for (const parque of parques) {
       const empresasDelParque = empresas.filter(
         (e) => String(e.parqueIndustrialId) === String(parque._id)
       );
-
       if (empresasDelParque.length === 0) continue;
 
       const filas = empresasAFilas(empresasDelParque);
       const ws    = XLSX.utils.json_to_sheet(filas);
 
-      // Ancho de columnas
       ws["!cols"] = [
-        { wch: 5  }, // NO.
-        { wch: 40 }, // EMPRESA
-        { wch: 35 }, // GIRO
-        { wch: 35 }, // DIRECCION
-        { wch: 25 }, // TELEFONO
-        { wch: 25 }, // CONTACTOS
-        { wch: 25 }, // PUESTO
-        { wch: 30 }, // CORREO
-        { wch: 25 }, // NOTAS
-        { wch: 30 }, // WEB
+        { wch: 5  }, { wch: 40 }, { wch: 35 }, { wch: 35 }, { wch: 25 },
+        { wch: 25 }, { wch: 25 }, { wch: 30 }, { wch: 25 }, { wch: 30 },
       ];
 
-      // Nombre de hoja: máx 31 chars, sin caracteres inválidos
       const nombreHoja = (parque.nombre || parque._id.toString())
         .replace(/[:\\/?*\[\]]/g, "")
         .slice(0, 31);
@@ -87,17 +142,22 @@ router.get("/export/excel", protect, async (req, res) => {
       XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
     }
 
-    // Si no hay parques, al menos exportar todas las empresas en una hoja
-    if (wb.SheetNames.length === 0) {
+    // Fallback: si no hay parques (ej. tipo=empresa sin parque asignado)
+    if (wb.SheetNames.length === 0 && empresas.length > 0) {
       const filas = empresasAFilas(empresas);
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(filas), "Empresas");
     }
 
-    const buffer    = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    if (wb.SheetNames.length === 0) {
+      return res.status(404).json({ error: "No hay datos para exportar con ese filtro" });
+    }
+
+    const buffer   = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
     const fechaFile = new Date().toISOString().slice(0, 10);
+    const sufijo   = tipo !== "todo" && valor ? `_${tipo}` : "";
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="Directorio_CRM_${fechaFile}.xlsx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="Directorio_CRM${sufijo}_${fechaFile}.xlsx"`);
     res.send(buffer);
   } catch (err) {
     console.error("Error exportando Excel:", err);
@@ -108,10 +168,12 @@ router.get("/export/excel", protect, async (req, res) => {
 // ─── EXPORTAR PDF ─────────────────────────────────────────────────────────────
 router.get("/export/pdf", protect, async (req, res) => {
   try {
-    const parques  = await ParqueIndustrial.find().lean();
-    const empresas = await Empresa.find().lean();
+    const { tipo = "todo", valor = "" } = req.query;
 
-    const doc     = new jsPDF({ orientation: "landscape", format: "a3" });
+    const empresas = await filtrarEmpresas(tipo, valor);
+    const parques  = await filtrarParques(tipo, valor, empresas);
+
+    const doc      = new jsPDF({ orientation: "landscape", format: "a3" });
     const fechaStr = new Date().toLocaleString("es-MX");
     let   primera  = true;
 
@@ -129,8 +191,6 @@ router.get("/export/pdf", protect, async (req, res) => {
       primera = false;
 
       const nombreParque = parque.nombre || "Parque Industrial";
-
-      // Cabecera de sección
       doc.setFontSize(16);
       doc.setTextColor(30, 64, 175);
       doc.text(`Directorio CRM — ${nombreParque}`, 14, 18);
@@ -148,19 +208,12 @@ router.get("/export/pdf", protect, async (req, res) => {
         styles:     { fontSize: 6, cellPadding: 1.5, overflow: "linebreak" },
         headStyles: { fillColor: [30, 64, 175], fontSize: 6, fontStyle: "bold" },
         columnStyles: {
-          0: { cellWidth: 8  },   // NO.
-          1: { cellWidth: 38 },   // EMPRESA
-          2: { cellWidth: 32 },   // GIRO
-          3: { cellWidth: 32 },   // DIRECCION
-          4: { cellWidth: 22 },   // TELEFONO
-          5: { cellWidth: 22 },   // CONTACTOS
-          6: { cellWidth: 22 },   // PUESTO
-          7: { cellWidth: 28 },   // CORREO
-          8: { cellWidth: 20 },   // NOTAS
-          9: { cellWidth: 28 },   // WEB
+          0: { cellWidth: 8  }, 1: { cellWidth: 38 }, 2: { cellWidth: 32 },
+          3: { cellWidth: 32 }, 4: { cellWidth: 22 }, 5: { cellWidth: 22 },
+          6: { cellWidth: 22 }, 7: { cellWidth: 28 }, 8: { cellWidth: 20 },
+          9: { cellWidth: 28 },
         },
-        margin:     { left: 10, right: 10 },
-        // Filas de mismo empresa con fondo ligeramente distinto
+        margin: { left: 10, right: 10 },
         didParseCell: (data) => {
           if (data.row.index % 2 === 0 && data.section === "body") {
             data.cell.styles.fillColor = [245, 247, 255];
@@ -169,8 +222,8 @@ router.get("/export/pdf", protect, async (req, res) => {
       });
     }
 
-    // Fallback si no hay parques
-    if (primera) {
+    // Fallback
+    if (primera && empresas.length > 0) {
       doc.setFontSize(16);
       doc.setTextColor(30, 64, 175);
       doc.text("Directorio CRM", 14, 18);
@@ -181,11 +234,17 @@ router.get("/export/pdf", protect, async (req, res) => {
         styles: { fontSize: 6 }, headStyles: { fillColor: [30, 64, 175] },
         margin: { left: 10, right: 10 },
       });
+      primera = false;
+    }
+
+    if (primera) {
+      return res.status(404).json({ error: "No hay datos para exportar con ese filtro" });
     }
 
     const fechaFile = new Date().toISOString().slice(0, 10);
+    const sufijo    = tipo !== "todo" && valor ? `_${tipo}` : "";
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="Directorio_CRM_${fechaFile}.pdf"`);
+    res.setHeader("Content-Disposition", `attachment; filename="Directorio_CRM${sufijo}_${fechaFile}.pdf"`);
     res.send(Buffer.from(doc.output("arraybuffer")));
   } catch (err) {
     console.error("Error exportando PDF:", err);
@@ -193,29 +252,35 @@ router.get("/export/pdf", protect, async (req, res) => {
   }
 });
 
-// ─── RESPALDO JSON COMPLETO ───────────────────────────────────────────────────
+// ─── RESPALDO JSON ────────────────────────────────────────────────────────────
 router.get("/export/backup", protect, async (req, res) => {
   try {
-    const [empresas, parques, users] = await Promise.all([
-      Empresa.find().lean(),
-      ParqueIndustrial.find().lean(),
-      User.find().select("-password").lean(),
-    ]);
+    const { tipo = "todo", valor = "" } = req.query;
+
+    const empresas = await filtrarEmpresas(tipo, valor);
+    const parques  = await filtrarParques(tipo, valor, empresas);
+
+    // Para backup "todo" también incluir usuarios; para filtros parciales no
+    const users = (tipo === "todo" || !valor || valor === "todos")
+      ? await User.find().select("-password").lean()
+      : [];
 
     const backup = {
       version:  "1.0",
       fecha:    new Date().toISOString(),
-      resumen:  {
+      filtro:   { tipo, valor: valor || "todos" },
+      resumen: {
         totalEmpresas: empresas.length,
         totalParques:  parques.length,
         totalUsuarios: users.length,
       },
-      colecciones: { empresas, parqueIndustrials: parques, users },
+      colecciones: { empresas, parqueIndustrials: parques, ...(users.length ? { users } : {}) },
     };
 
     const fechaFile = new Date().toISOString().slice(0, 10);
+    const sufijo    = tipo !== "todo" && valor ? `_${tipo}` : "";
     res.setHeader("Content-Type", "application/json");
-    res.setHeader("Content-Disposition", `attachment; filename="CRM_Backup_${fechaFile}.json"`);
+    res.setHeader("Content-Disposition", `attachment; filename="CRM_Backup${sufijo}_${fechaFile}.json"`);
     res.send(JSON.stringify(backup, null, 2));
   } catch (err) {
     console.error("Error en respaldo:", err);

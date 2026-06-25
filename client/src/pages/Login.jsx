@@ -213,7 +213,7 @@ const styles = {
     width: "400px",
     height: "400px",
     borderRadius: "50%",
-    background: "radial-gradient(circle, #0f172a 0%, #1e3a5f 60%, transparent 100%)",
+    background: "radial-gradient(circle, #0c0f18 0%, #1e3a5f 60%, transparent 100%)",
     bottom: "-80px",
     left: "-60px",
     opacity: 0.3,

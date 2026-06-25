@@ -271,7 +271,7 @@ const s = {
     top: "calc(100% + 8px)",
     right: 0,
     width: 320,
-    background: "#0f172a",
+    background: "#0c0f18",
     border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: 12,
     boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
