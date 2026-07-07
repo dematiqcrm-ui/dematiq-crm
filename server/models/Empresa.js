@@ -1,5 +1,22 @@
 import mongoose from "mongoose";
 
+// Un contacto puede tener varios teléfonos (fijo, celular, otro contacto, etc.)
+const telefonoSchema = new mongoose.Schema(
+  {
+    tipo: {
+      type: String,
+      default: "",
+    },
+    numero: {
+      type: String,
+      required: true,
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const contactoSchema = new mongoose.Schema(
   {
     nombre: String,
@@ -8,7 +25,10 @@ const contactoSchema = new mongoose.Schema(
 
     correo: String,
 
-    telefono: String,
+    telefonos: {
+      type: [telefonoSchema],
+      default: [],
+    },
 
     nota: {
       type: String,

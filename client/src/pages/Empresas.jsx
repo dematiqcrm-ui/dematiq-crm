@@ -153,6 +153,43 @@ function UltimoCorreoBadge({ fecha }) {
   );
 }
 
+// Devuelve la lista de teléfonos de un contacto, con compatibilidad hacia
+// atrás para el esquema viejo que guardaba un solo "telefono" (string).
+function getTelefonosContacto(c) {
+  if (c.telefonos?.length > 0) return c.telefonos;
+  if (c.telefono) return [{ tipo: "", numero: c.telefono }];
+  return [];
+}
+
+function TelefonosContacto({ contacto }) {
+  const telefonos = getTelefonosContacto(contacto);
+  if (telefonos.length === 0) {
+    return <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>;
+  }
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+      {telefonos.map((t, i) => (
+        <span key={i} style={{
+          display: "inline-flex", alignItems: "center", gap: 5,
+          padding: "3px 9px", borderRadius: 6,
+          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+          fontSize: 12, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap",
+        }}>
+          {t.tipo && (
+            <span style={{
+              fontSize: 9, fontWeight: 600, color: "rgba(129,140,248,0.85)",
+              textTransform: "uppercase", letterSpacing: "0.05em",
+            }}>
+              {t.tipo}
+            </span>
+          )}
+          {t.numero}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export default function Empresas() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [historial, setHistorial]                   = useState([]);
@@ -710,24 +747,22 @@ export default function Empresas() {
                       )}
                     </div>
 
-                    {/* Contact details */}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 8 }}>
-                      {[
-                        {
-                          label: "Correo",
-                          value: c.correo
-                            ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a>
-                            : null,
-                        },
-                        { label: "Teléfono", value: c.telefono },
-                      ].map(({ label, value }) => (
-                        <div key={label}>
-                          <div style={s.contactLabel}>{label}</div>
-                          <div style={s.contactValue}>
-                            {value || <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}
-                          </div>
-                        </div>
-                      ))}
+                    {/* Correo */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={s.contactLabel}>Correo</div>
+                      <div style={s.contactValue}>
+                        {c.correo
+                          ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a>
+                          : <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}
+                      </div>
+                    </div>
+
+                    {/* Teléfono(s) */}
+                    <div style={{ marginBottom: 8 }}>
+                      <div style={s.contactLabel}>
+                        Teléfono{getTelefonosContacto(c).length > 1 ? "s" : ""}
+                      </div>
+                      <TelefonosContacto contacto={c} />
                     </div>
 
                     {/* Last email sent */}

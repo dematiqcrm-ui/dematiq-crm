@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 
+const TELEFONO_VACIO = { tipo: "", numero: "" };
+
 const CAMPO_CONTACTO_VACIO = {
   nombre: "",
   puesto: "",
   correo: "",
-  telefono: "",
+  telefonos: [{ ...TELEFONO_VACIO }],
   nota: "",
 };
 
@@ -43,8 +45,18 @@ export default function EmpresaForm({
                 nombre:   c.nombre   || "",
                 puesto:   c.puesto   || "",
                 correo:   c.correo   || "",
-                telefono: c.telefono || "",
-                nota:     c.nota     || "",       // ← nuevo campo
+                // Compatibilidad: si el contacto viene del esquema viejo con
+                // "telefono" (string único), lo convertimos a la nueva lista.
+                telefonos:
+                  c.telefonos?.length > 0
+                    ? c.telefonos.map((t) => ({
+                        tipo:   t.tipo   || "",
+                        numero: t.numero || "",
+                      }))
+                    : c.telefono
+                    ? [{ tipo: "", numero: c.telefono }]
+                    : [{ ...TELEFONO_VACIO }],
+                nota: c.nota || "",
                 fechaUltimoCorreo: c.fechaUltimoCorreo || null,
               }))
             : [{ ...CAMPO_CONTACTO_VACIO }],
@@ -69,7 +81,7 @@ export default function EmpresaForm({
   const agregarContacto = () => {
     setForm((prev) => ({
       ...prev,
-      contactos: [...prev.contactos, { ...CAMPO_CONTACTO_VACIO }],
+      contactos: [...prev.contactos, { ...CAMPO_CONTACTO_VACIO, telefonos: [{ ...TELEFONO_VACIO }] }],
     }));
   };
 
@@ -80,13 +92,58 @@ export default function EmpresaForm({
     }));
   };
 
+  // ── Teléfonos por contacto ──
+  const handleTelefonoChange = (contactoIndex, telIndex, e) => {
+    const { name, value } = e.target;
+    setForm((prev) => {
+      const contactos = [...prev.contactos];
+      const telefonos = [...contactos[contactoIndex].telefonos];
+      telefonos[telIndex] = { ...telefonos[telIndex], [name]: value };
+      contactos[contactoIndex] = { ...contactos[contactoIndex], telefonos };
+      return { ...prev, contactos };
+    });
+  };
+
+  const agregarTelefono = (contactoIndex) => {
+    setForm((prev) => {
+      const contactos = [...prev.contactos];
+      contactos[contactoIndex] = {
+        ...contactos[contactoIndex],
+        telefonos: [...contactos[contactoIndex].telefonos, { ...TELEFONO_VACIO }],
+      };
+      return { ...prev, contactos };
+    });
+  };
+
+  const eliminarTelefono = (contactoIndex, telIndex) => {
+    setForm((prev) => {
+      const contactos = [...prev.contactos];
+      const telefonos = contactos[contactoIndex].telefonos.filter((_, i) => i !== telIndex);
+      contactos[contactoIndex] = {
+        ...contactos[contactoIndex],
+        telefonos: telefonos.length > 0 ? telefonos : [{ ...TELEFONO_VACIO }],
+      };
+      return { ...prev, contactos };
+    });
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const payload = {
       ...form,
-      contactos: form.contactos.filter((c) =>
-        Object.values(c).some((v) => typeof v === "string" && v.trim() !== "")
-      ),
+      contactos: form.contactos
+        .map((c) => ({
+          ...c,
+          telefonos: c.telefonos.filter((t) => t.numero.trim() !== ""),
+        }))
+        .filter(
+          (c) =>
+            c.nombre.trim() !== "" ||
+            c.puesto.trim() !== "" ||
+            c.correo.trim() !== "" ||
+            c.nota.trim() !== "" ||
+            c.telefonos.length > 0
+        ),
     };
     onSubmit(payload);
   };
@@ -182,6 +239,36 @@ export default function EmpresaForm({
           font-size: 10px; color: rgba(250,204,21,0.7); font-weight: 500;
           margin-left: 4px; text-transform: none; letter-spacing: 0;
         }
+
+        /* ── Teléfonos múltiples por contacto ── */
+        .ef-tel-list {
+          display: flex; flex-direction: column; gap: 6px;
+        }
+        .ef-tel-row {
+          display: grid;
+          grid-template-columns: 110px 1fr 26px;
+          gap: 6px;
+          align-items: center;
+        }
+        .ef-tel-input {
+          height: 32px; padding: 0 10px;
+        }
+        .ef-tel-remove {
+          width: 22px; height: 22px; border-radius: 50%;
+          background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2);
+          color: #f87171; font-size: 13px; line-height: 1;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: background 0.15s; flex-shrink: 0;
+        }
+        .ef-tel-remove:hover { background: rgba(248,113,113,0.18); }
+        .ef-add-tel-btn {
+          background: none; border: 1px dashed rgba(99,130,246,0.35);
+          color: #818cf8; font-size: 11.5px; font-weight: 500;
+          padding: 5px 10px; border-radius: 6px; cursor: pointer;
+          display: flex; align-items: center; gap: 4px; width: fit-content;
+          transition: background 0.15s, border-color 0.15s; font-family: inherit;
+        }
+        .ef-add-tel-btn:hover { background: rgba(99,130,246,0.1); border-color: rgba(99,130,246,0.6); }
       `}</style>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -265,10 +352,52 @@ export default function EmpresaForm({
                   <input type="email" name="correo" placeholder="correo@empresa.com"
                     value={contacto.correo} onChange={(e) => handleContactoChange(index, e)} className="ef-input" />
                 </div>
+
+                {/* ── Teléfonos (uno o más) ── */}
                 <div>
-                  <label className="ef-label">Teléfono</label>
-                  <input type="text" name="telefono" placeholder="442 123 4567"
-                    value={contacto.telefono} onChange={(e) => handleContactoChange(index, e)} className="ef-input" />
+                  <label className="ef-label">Teléfono(s)</label>
+                  <div className="ef-tel-list">
+                    {contacto.telefonos.map((tel, telIndex) => (
+                      <div key={telIndex} className="ef-tel-row">
+                        <input
+                          type="text"
+                          name="tipo"
+                          placeholder="Fijo, Celular..."
+                          value={tel.tipo}
+                          onChange={(e) => handleTelefonoChange(index, telIndex, e)}
+                          className="ef-input ef-tel-input"
+                        />
+                        <input
+                          type="text"
+                          name="numero"
+                          placeholder="442 123 4567"
+                          value={tel.numero}
+                          onChange={(e) => handleTelefonoChange(index, telIndex, e)}
+                          className="ef-input ef-tel-input"
+                        />
+                        {contacto.telefonos.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => eliminarTelefono(index, telIndex)}
+                            className="ef-tel-remove"
+                            title="Eliminar teléfono"
+                          >
+                            ×
+                          </button>
+                        )}
+                        {contacto.telefonos.length === 1 && <span />}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 6 }}>
+                    <button
+                      type="button"
+                      onClick={() => agregarTelefono(index)}
+                      className="ef-add-tel-btn"
+                    >
+                      <span style={{ fontSize: 13, lineHeight: 1 }}>+</span> Agregar teléfono
+                    </button>
+                  </div>
                 </div>
               </div>
 

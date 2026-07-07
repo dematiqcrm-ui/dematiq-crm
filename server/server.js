@@ -10,6 +10,7 @@ import authRoutes from "./routes/authRoutes.js";
 import exportRoutes from "./routes/exportRoutes.js";
 import correoRoutes from "./routes/correoRoutes.js";
 import cuentaCorreoRoutes from "./routes/cuentaCorreoRoutes.js"; // ← agregar
+import systemRoutes from "./routes/systemRoutes.js"; // ← agregar
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use("/api/reportes",       reporteRoutes);
 app.use("/api/auth",           authRoutes);
 app.use("/api/correo",         correoRoutes);
 app.use("/api/cuentas-correo", cuentaCorreoRoutes); // ← agregar
+app.use("/api/system",         systemRoutes);        // ← agregar
 app.use("/api",                exportRoutes);
 
 app.get("/", (req, res) => {

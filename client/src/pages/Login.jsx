@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { loginRequest } from "../services/authService";
+import logo from "../assets/logo.png"; // reemplaza "logo.png" por el nombre real de tu archivo
 
 export default function Login() {
   const navigate = useNavigate();
@@ -60,13 +61,7 @@ export default function Login() {
       <div style={{ ...styles.card, opacity: mounted ? 1 : 0, transform: mounted ? "translateY(0)" : "translateY(16px)", transition: "opacity 0.5s ease, transform 0.5s ease" }}>
         {/* Logo / Brand */}
         <div style={styles.brand}>
-          <div style={styles.logoMark}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-              <path d="M10 2L18 7V13L10 18L2 13V7L10 2Z" fill="white" opacity="0.9" />
-              <path d="M10 6L14 8.5V13.5L10 16L6 13.5V8.5L10 6Z" fill="#1e293b" />
-            </svg>
-          </div>
-          <span style={styles.brandName}>Dematiq</span>
+          <img src={logo} alt="Dematiq" style={styles.logoMark} />
         </div>
 
         <h1 style={styles.title}>Bienvenido de vuelta</h1>
@@ -224,9 +219,11 @@ const styles = {
     backdropFilter: "blur(20px)",
     border: "1px solid rgba(255,255,255,0.07)",
     borderRadius: "20px",
-    padding: "40px",
+    padding: "16px 24px 24px",
     width: "100%",
-    maxWidth: "400px",
+    maxWidth: "380px",
+    maxHeight: "90vh",
+    overflowY: "auto",
     position: "relative",
     zIndex: 1,
     boxShadow: "0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04) inset",
@@ -234,18 +231,14 @@ const styles = {
   brand: {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    marginBottom: "28px",
+    justifyContent: "center",
+    marginBottom: "0px",
   },
   logoMark: {
-    width: "36px",
-    height: "36px",
-    borderRadius: "10px",
-    background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.4)",
+    width: "140px",
+    height: "140px",
+    borderRadius: "18px",
+    objectFit: "contain",
   },
   brandName: {
     fontFamily: "'Sora', sans-serif",
@@ -265,7 +258,7 @@ const styles = {
   subtitle: {
     fontSize: "13.5px",
     color: "#64748b",
-    marginBottom: "28px",
+    marginBottom: "24px",
     lineHeight: 1.5,
   },
   errorBox: {
@@ -283,7 +276,7 @@ const styles = {
   form: {
     display: "flex",
     flexDirection: "column",
-    gap: "18px",
+    gap: "14px",
   },
   fieldGroup: {
     display: "flex",

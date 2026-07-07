@@ -5,14 +5,33 @@ import { getResumen } from "../services/reporteService";
 import { getCuentas, createCuenta, deleteCuenta, testCuenta } from "../services/cuentaCorreoService";
 
 import {
-  User, Moon, Sun, Lock, Database, Download,
+  User, Lock, Database, Download,
   FileSpreadsheet, FileText, Wifi, Clock, Tag,
   CheckCircle, AlertCircle, Loader2, ShieldCheck,
-  Eye, EyeOff, KeyRound, Mail, Plus, ChevronDown,
+  Eye, EyeOff, KeyRound, Mail, Plus, Minus, ChevronDown,
+  Type, RotateCcw,
 } from "lucide-react";
 
 const PIN_SECRETO = "1234";
 const API = "http://localhost:5000/api";
+
+// Límites del escalado de texto
+const TEXT_SCALE_MIN = 80;
+const TEXT_SCALE_MAX = 150;
+const TEXT_SCALE_STEP = 10;
+
+// ─── Formatea bytes a una unidad legible ─────────────────────────────────────
+const formatBytes = (bytes) => {
+  if (!bytes || bytes <= 0) return "0 MB";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let value = bytes;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i++;
+  }
+  return `${value.toFixed(i > 0 && value < 10 ? 2 : 0)} ${units[i]}`;
+};
 
 // ─── Descarga archivo desde el backend ───────────────────────────────────────
 const downloadFromBackend = async (url) => {
@@ -331,7 +350,6 @@ export default function Configuracion() {
   const { user } = useAuth();
 
   const [stats, setStats]                     = useState({ empresas: 0, parques: 0, contactos: 0 });
-  const [theme, setTheme]                     = useState(() => localStorage.getItem("theme") || "dark");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword]         = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -343,6 +361,23 @@ export default function Configuracion() {
   const [cuentaForm, setCuentaForm]           = useState({ nombre: "", email: "", password: "", servicio: "gmail" });
   const [mostrarFormCuenta, setMostrarFormCuenta] = useState(false);
   const [testingCuenta, setTestingCuenta]     = useState(null);
+  const [dbStats, setDbStats]                 = useState(null);
+  const [dbStatsLoading, setDbStatsLoading]   = useState(true);
+
+  // ─── Tamaño de texto (aplica a toda la app vía font-size del <html>) ───────
+  const [textScale, setTextScale] = useState(() => {
+    const saved = parseInt(localStorage.getItem("textScale"), 10);
+    return Number.isFinite(saved) ? saved : 100;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("textScale", String(textScale));
+    document.documentElement.style.zoom = `${textScale}%`;
+  }, [textScale]);
+
+  const ajustarTexto = (delta) => {
+    setTextScale((prev) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, prev + delta)));
+  };
 
   // ─── Funciones de carga ────────────────────────────────────────────────────
   const cargarResumen = useCallback(async () => {
@@ -364,6 +399,25 @@ export default function Configuracion() {
       const data = await getCuentas();
       setCuentas(data);
     } catch (err) { console.error(err); }
+  }, []);
+
+  // Peso de la base de datos (requiere el endpoint GET /api/system/db-stats)
+  const cargarDbStats = useCallback(async () => {
+    setDbStatsLoading(true);
+    try {
+      const jwt = localStorage.getItem("token");
+      const res = await fetch(`${API}/system/db-stats`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
+      if (!res.ok) throw new Error(`Error ${res.status}`);
+      const data = await res.json();
+      setDbStats(data);
+    } catch (err) {
+      console.error("Error al obtener el peso de la BD:", err);
+      setDbStats(null);
+    } finally {
+      setDbStatsLoading(false);
+    }
   }, []);
 
   const handleCreateCuenta = async () => {
@@ -391,23 +445,12 @@ export default function Configuracion() {
     finally { setTestingCuenta(null); }
   };
 
-  // ─── Tema ──────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    localStorage.setItem("theme", theme);
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-      document.body.style.backgroundColor = "#020617";
-    } else {
-      document.documentElement.classList.remove("dark");
-      document.body.style.backgroundColor = "#f8fafc";
-    }
-  }, [theme]);
-
   useEffect(() => {
     cargarResumen();
     checkApiStatus();
     cargarCuentas();
-  }, [cargarResumen, checkApiStatus, cargarCuentas]);
+    cargarDbStats();
+  }, [cargarResumen, checkApiStatus, cargarCuentas, cargarDbStats]);
 
   // ─── Contraseña ────────────────────────────────────────────────────────────
   const handlePasswordChange = () => {
@@ -479,30 +522,53 @@ export default function Configuracion() {
           </div>
         </div>
 
-        {/* APARIENCIA */}
+        {/* TAMAÑO DE TEXTO */}
         <div className="bg-slate-900 rounded-2xl border border-slate-800 p-6">
           <div className="flex items-center gap-3 mb-6">
-            <Moon size={22} className="text-yellow-400" />
-            <h2 className="text-xl font-semibold">Apariencia</h2>
+            <Type size={22} className="text-yellow-400" />
+            <h2 className="text-xl font-semibold">Tamaño de texto</h2>
           </div>
-          <div className="space-y-4">
-            {[
-              { value: "dark",  icon: <Moon size={18} />, label: "Tema oscuro" },
-              { value: "light", icon: <Sun  size={18} />, label: "Tema claro"  },
-            ].map(({ value, icon, label }) => (
-              <div key={value} onClick={() => setTheme(value)}
-                className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all
-                  ${theme === value
-                    ? "bg-blue-600/20 border-blue-500"
-                    : "bg-slate-800 border-slate-700 hover:border-slate-500"}`}>
-                <div className="flex items-center gap-3">{icon}<span>{label}</span></div>
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center
-                  ${theme === value ? "border-blue-400" : "border-slate-600"}`}>
-                  {theme === value && <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />}
-                </div>
-              </div>
-            ))}
+          <p className="text-slate-400 text-sm mb-5">
+            Ajusta el tamaño del texto en todas las vistas del sistema.
+          </p>
+
+          <div className="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-xl p-4">
+            <button
+              onClick={() => ajustarTexto(-TEXT_SCALE_STEP)}
+              disabled={textScale <= TEXT_SCALE_MIN}
+              className="w-11 h-11 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center
+                         hover:border-yellow-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+              title="Reducir texto"
+            >
+              <Minus size={18} />
+            </button>
+
+            <div className="text-center">
+              <p className="text-2xl font-bold">{textScale}%</p>
+              <p className="text-xs text-slate-500 mt-0.5">Tamaño actual</p>
+            </div>
+
+            <button
+              onClick={() => ajustarTexto(TEXT_SCALE_STEP)}
+              disabled={textScale >= TEXT_SCALE_MAX}
+              className="w-11 h-11 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center
+                         hover:border-yellow-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+              title="Aumentar texto"
+            >
+              <Plus size={18} />
+            </button>
           </div>
+
+          {textScale !== 100 && (
+            <button
+              onClick={() => setTextScale(100)}
+              className="w-full flex items-center justify-center gap-2 mt-3 p-2.5 rounded-lg
+                         bg-slate-800 border border-slate-700 hover:border-yellow-500
+                         text-slate-400 hover:text-yellow-400 text-xs transition-all"
+            >
+              <RotateCcw size={13} /> Restablecer tamaño
+            </button>
+          )}
         </div>
 
         {/* SEGURIDAD */}
@@ -709,7 +775,7 @@ export default function Configuracion() {
           </div>
         </div>
 
-        <div className="mt-4 bg-slate-800 rounded-xl p-5 flex items-center justify-between">
+        <div className="mt-4 bg-slate-800 rounded-xl p-5 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <Database size={18} className="text-green-400" />
             <div>
@@ -717,9 +783,28 @@ export default function Configuracion() {
               <p className="font-semibold">MongoDB Atlas</p>
             </div>
           </div>
-          <span className="text-xs bg-green-900/30 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">
-            Activa
-          </span>
+
+          <div className="flex items-center gap-2">
+            {dbStatsLoading ? (
+              <span className="flex items-center gap-2 text-slate-400 text-xs px-3 py-1">
+                <Loader2 size={12} className="animate-spin" /> Calculando peso…
+              </span>
+            ) : dbStats ? (
+              <span
+                className="text-xs bg-blue-900/30 border border-blue-700/50 text-blue-300 px-3 py-1 rounded-full font-medium"
+                title="Tamaño de datos + índices"
+              >
+                Peso: {formatBytes(dbStats.totalSize ?? dbStats.dataSize)}
+              </span>
+            ) : (
+              <span className="text-xs bg-red-900/30 border border-red-700/50 text-red-400 px-3 py-1 rounded-full font-medium">
+                Peso no disponible
+              </span>
+            )}
+            <span className="text-xs bg-green-900/30 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">
+              Activa
+            </span>
+          </div>
         </div>
       </div>
     </Layout>
