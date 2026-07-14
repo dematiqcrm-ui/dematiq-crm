@@ -7,6 +7,7 @@ import {
   getParquesIncompletos,
   getEmpresasEstado,
   getEmpresasByParque,
+  getUltimosCorreos,
 } from "../services/reporteService";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
@@ -107,14 +108,14 @@ function Collapsible({ title, badge, defaultOpen = false, children }) {
   );
 }
 
-// ─── tab y setTab vienen del padre ───────────────────────────────────────────
-function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigate, parqueSel, setParqueSel, tab, setTab }) {
+function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigate, parqueSel, setParqueSel }) {
+  const [tab, setTab] = useState("empresas");
 
   const parquesUnicos = [...new Map(
-    empresasIncompletas
-      .filter((e) => (e.parqueId || e.parque) && e.parque)
-      .map((e) => [e.parqueId || e.parque, { id: e.parqueId || e.parque, nombre: e.parque }])
-  ).values()];
+  empresasIncompletas
+    .filter((e) => (e.parqueId || e.parque) && e.parque)
+    .map((e) => [e.parqueId || e.parque, { id: e.parqueId || e.parque, nombre: e.parque }])
+).values()];
 
   const empresasFiltradas = parqueSel && parqueSel !== "todos"
     ? empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel)
@@ -127,17 +128,11 @@ function IncompletesDrilldown({ empresasIncompletas, parquesIncompletos, navigat
     background: "rgba(248,113,113,0.08)",
   };
 
-  // Al cambiar de tab, resetear el filtro de parque
-  const handleTabChange = (key) => {
-    setTab(key);
-    setParqueSel("todos");
-  };
-
   return (
     <div>
       <div style={s.tabs}>
-        {[["empresas", "Empresas"], ["parques", "Parques industriales"]].map(([key, label]) => (
-          <button key={key} style={s.tab(tab === key)} onClick={() => handleTabChange(key)}>{label}</button>
+        {[["empresas", "Empresas"], ["parques", "Parques"]].map(([key, label]) => (
+          <button key={key} style={s.tab(tab === key)} onClick={() => { setTab(key); setParqueSel("todos"); }}>{label}</button>
         ))}
       </div>
 
@@ -278,42 +273,48 @@ function GraficaPorParque({ data }) {
 
 export default function Reportes() {
   const navigate = useNavigate();
-  const [resumen, setResumen]                   = useState({ empresas: 0, parques: 0, contactos: 0 });
+  const [resumen, setResumen] = useState({ empresas: 0, parques: 0, contactos: 0 });
   const [empresasIncompletas, setEmpresasIncompletas] = useState([]);
-  const [parquesIncompletos, setParquesIncompletos]   = useState([]);
-  const [empresasEstado, setEmpresasEstado]     = useState([]);
+  const [parquesIncompletos, setParquesIncompletos] = useState([]);
+  const [empresasEstado, setEmpresasEstado] = useState([]);
   const [empresasByParque, setEmpresasByParque] = useState([]);
-  const [chartTab, setChartTab]                 = useState("estado");
-  const [parqueSel, setParqueSel]               = useState("todos");
-
-  // ─── Estado del tab elevado al padre para calcular el badge correctamente ──
-  const [incomplTab, setIncomplTab] = useState("empresas");
+  const [chartTab, setChartTab] = useState("estado");
+  const [parqueSel, setParqueSel] = useState("todos");
+  const [ultimosCorreos, setUltimosCorreos] = useState([]);
 
   useEffect(() => { cargarDatos(); }, []);
 
   const cargarDatos = async () => {
-    try {
-      const [resumenData, empresasData, parquesData, estadosData, parqueData] = await Promise.all([
-        getResumen(),
-        getEmpresasIncompletas(),
-        getParquesIncompletos(),
-        getEmpresasEstado(),
-        getEmpresasByParque(),
-      ]);
-      setResumen(resumenData);
-      setEmpresasIncompletas(empresasData);
-      setParquesIncompletos(parquesData);
-      setEmpresasEstado(estadosData);
-      setEmpresasByParque(parqueData);
-    } catch (error) { console.error(error); }
-  };
+  try {
+    const [resumenData, empresasData, parquesData, estadosData, parqueData, correosData] = await Promise.all([
+      getResumen(),
+      getEmpresasIncompletas(),
+      getParquesIncompletos(),
+      getEmpresasEstado(),
+      getEmpresasByParque(),
+      getUltimosCorreos(),
+    ]);
+    setResumen(resumenData);
+    setEmpresasIncompletas(empresasData);
+    setParquesIncompletos(parquesData);
+    setEmpresasEstado(estadosData);
+    setEmpresasByParque(parqueData);
+    setUltimosCorreos(correosData);
+  } catch (error) { console.error(error); }
+};
 
-  // ─── Badge refleja exactamente el tab activo ────────────────────────────────
-  const totalIncompletos = incomplTab === "parques"
-    ? parquesIncompletos.length
-    : parqueSel === "todos"
-      ? empresasIncompletas.length
-      : empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel).length;
+const totalIncompletos = parqueSel === "todos"
+  ? empresasIncompletas.length + parquesIncompletos.length
+  : empresasIncompletas.filter((e) => (e.parqueId || e.parque) === parqueSel).length;
+
+  const datosIncompletos = Object.values(
+    empresasIncompletas.reduce((acc, e) => {
+      const parque = e.parque || "Sin parque";
+      if (!acc[parque]) acc[parque] = { parque, total: 0 };
+      acc[parque].total += 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b.total - a.total);
 
   return (
     <Layout>
@@ -363,17 +364,101 @@ export default function Reportes() {
           )}
         </Collapsible>
 
-        {/* Incompletos — badge reactivo al tab activo */}
+        {/* Incompletos */}
+        {/* Gráfica datos incompletos */}
+          <Collapsible title="Empresas con datos incompletos por parque" defaultOpen={false}>
+            {datosIncompletos.length === 0 ? (
+              <div style={{ padding: "32px 0", textAlign: "center", color: "rgba(255,255,255,0.15)", fontSize: 12 }}>
+                Sin datos incompletos
+              </div>
+            ) : (
+              <div style={{ width: "100%", overflowY: "auto" }}>
+                <ResponsiveContainer width="100%" height={Math.max(220, datosIncompletos.length * 36)}>
+                  <BarChart
+                    data={datosIncompletos}
+                    layout="vertical"
+                    margin={{ top: 0, right: 40, left: 4, bottom: 0 }}
+                    barCategoryGap="30%"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      tick={{ fontSize: 11, fill: "rgba(255,255,255,0.28)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      allowDecimals={false}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="parque"
+                      width={160}
+                      tick={{ fontSize: 11, fill: "rgba(255,255,255,0.45)" }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => v.length > 22 ? v.slice(0, 21) + "…" : v}
+                    />
+                    <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                    <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={18}>
+                      {datosIncompletos.map((_, i) => (
+                        <Cell key={i} fill="#f87171" />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </Collapsible>
         <Collapsible title="Datos incompletos" badge={totalIncompletos} defaultOpen={true}>
           <IncompletesDrilldown
-            empresasIncompletas={empresasIncompletas}
-            parquesIncompletos={parquesIncompletos}
-            navigate={navigate}
-            parqueSel={parqueSel}
-            setParqueSel={setParqueSel}
-            tab={incomplTab}
-            setTab={setIncomplTab}
-          />
+          empresasIncompletas={empresasIncompletas}
+          parquesIncompletos={parquesIncompletos}
+          navigate={navigate}
+          parqueSel={parqueSel}
+          setParqueSel={setParqueSel}
+        />
+        </Collapsible>
+        {/* Historial de contactos */}
+        <Collapsible title="Últimos correos enviados" badge={ultimosCorreos.length} defaultOpen={false}>
+          {ultimosCorreos.length === 0 ? (
+            <div style={{ padding: "24px 0", textAlign: "center", color: "rgba(255,255,255,0.15)", fontSize: 12 }}>
+              Sin correos enviados aún
+            </div>
+          ) : (
+            <table style={s.table}>
+              <thead>
+                <tr>
+                  {["Empresa", "Contacto", "Asunto", "Remitente", "Fecha"].map((h) => (
+                    <th key={h} style={s.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {ultimosCorreos.map((h, i) => (
+                  <tr key={i}
+                    onMouseEnter={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)")}
+                    onMouseLeave={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "transparent")}
+                  >
+                    <td style={{ ...s.td, fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.75)" }}>
+                      {h.empresaId?.empresa || "—"}
+                    </td>
+                    <td style={s.td}>{h.contactoNombre || "—"}</td>
+                    <td style={{ ...s.td, maxWidth: 200 }}>
+                      <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 195 }}>
+                        {h.asunto || "—"}
+                      </div>
+                    </td>
+                    <td style={s.td}>{h.cuentaRemitente || "—"}</td>
+                    <td style={{ ...s.td, whiteSpace: "nowrap", fontSize: 11 }}>
+                      {new Date(h.createdAt).toLocaleDateString("es-MX", {
+                        day: "2-digit", month: "short", year: "numeric",
+                        hour: "2-digit", minute: "2-digit"
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </Collapsible>
       </div>
     </Layout>

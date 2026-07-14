@@ -357,27 +357,12 @@ export default function Configuracion() {
   const [apiStatus, setApiStatus]             = useState("checking");
   const [exporting, setExporting]             = useState(null);
   const [sistemaDesbloqueado, setSistemaDesbloqueado] = useState(false);
-  const [cuentas, setCuentas]                 = useState([]);
-  const [cuentaForm, setCuentaForm]           = useState({ nombre: "", email: "", password: "", servicio: "gmail" });
+  const [tablaExport, setTablaExport] = useState("todo");
+  const [cuentas, setCuentas]           = useState([]);
+  const [cuentaForm, setCuentaForm]     = useState({ nombre: "", email: "", password: "", servicio: "gmail" });
   const [mostrarFormCuenta, setMostrarFormCuenta] = useState(false);
-  const [testingCuenta, setTestingCuenta]     = useState(null);
-  const [dbStats, setDbStats]                 = useState(null);
-  const [dbStatsLoading, setDbStatsLoading]   = useState(true);
+  const [testingCuenta, setTestingCuenta] = useState(null);
 
-  // ─── Tamaño de texto (aplica a toda la app vía font-size del <html>) ───────
-  const [textScale, setTextScale] = useState(() => {
-    const saved = parseInt(localStorage.getItem("textScale"), 10);
-    return Number.isFinite(saved) ? saved : 100;
-  });
-
-  useEffect(() => {
-    localStorage.setItem("textScale", String(textScale));
-    document.documentElement.style.zoom = `${textScale}%`;
-  }, [textScale]);
-
-  const ajustarTexto = (delta) => {
-    setTextScale((prev) => Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, prev + delta)));
-  };
 
   // ─── Funciones de carga ────────────────────────────────────────────────────
   const cargarResumen = useCallback(async () => {
@@ -438,19 +423,36 @@ export default function Configuracion() {
     catch { alert("No se pudo eliminar la cuenta"); }
   };
 
-  const handleTestCuenta = async (id) => {
-    setTestingCuenta(id);
-    try { await testCuenta(id); alert("Correo de prueba enviado correctamente"); }
-    catch { alert("No se pudo conectar con esta cuenta"); }
-    finally { setTestingCuenta(null); }
-  };
+const handleTestCuenta = async (id) => {
+  setTestingCuenta(id);
+  try {
+    await testCuenta(id);
+    alert("Correo de prueba enviado correctamente");
+  } catch {
+    alert("No se pudo conectar con esta cuenta");
+  } finally {
+    setTestingCuenta(null);
+  }
+};
 
+  // ─── Tema ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    cargarResumen();
-    checkApiStatus();
-    cargarCuentas();
-    cargarDbStats();
-  }, [cargarResumen, checkApiStatus, cargarCuentas, cargarDbStats]);
+    localStorage.setItem("theme", theme);
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+      document.body.style.backgroundColor = "#020617";
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.body.style.backgroundColor = "#f8fafc";
+    }
+  }, [theme]);
+
+  // ─── Carga inicial ─────────────────────────────────────────────────────────
+  useEffect(() => {
+  cargarResumen();
+  checkApiStatus();
+  cargarCuentas();
+}, [cargarResumen, checkApiStatus, cargarCuentas]);
 
   // ─── Contraseña ────────────────────────────────────────────────────────────
   const handlePasswordChange = () => {
@@ -625,9 +627,36 @@ export default function Configuracion() {
             <PinGuard onSuccess={() => setSistemaDesbloqueado(true)} />
           ) : (
             <div className="space-y-4">
-              {/* Panel de filtros granulares */}
-              <ExportFilterPanel exporting={exporting} onExport={handleExport} />
-
+              {/* Selector de tabla */}
+            <div className="flex gap-2 mb-2">
+              {["todo", "empresas", "parques"].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTablaExport(t)}
+                  className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all capitalize
+                    ${tablaExport === t
+                      ? "bg-blue-600/20 border-blue-500 text-blue-300"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"}`}
+                >
+                  {t === "todo" ? "Todo" : t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+            <ExportBtn type="excel"
+              icon={<FileSpreadsheet size={20} className="text-green-400" />}
+              label={`Exportar Excel — ${tablaExport}`}
+              hoverBorder="hover:border-green-500" spinColor="text-green-400"
+              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
+            <ExportBtn type="pdf"
+              icon={<FileText size={20} className="text-red-400" />}
+              label={`Exportar PDF — ${tablaExport}`}
+              hoverBorder="hover:border-red-500" spinColor="text-red-400"
+              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
+            <ExportBtn type="backup"
+              icon={<Database size={20} className="text-blue-400" />}
+              label={`Respaldo JSON — ${tablaExport}`}
+              hoverBorder="hover:border-blue-500" spinColor="text-blue-400"
+              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
               {/* Volver a bloquear */}
               <button
                 onClick={() => setSistemaDesbloqueado(false)}
@@ -637,6 +666,7 @@ export default function Configuracion() {
               >
                 <Lock size={14} /> Volver a bloquear
               </button>
+              
             </div>
           )}
         </div>
@@ -657,48 +687,67 @@ export default function Configuracion() {
           </button>
         </div>
 
-        {mostrarFormCuenta && (
-          <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 mb-4 grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Nombre</label>
-              <input type="text" placeholder="Ej. Ventas" value={cuentaForm.nombre}
-                onChange={(e) => setCuentaForm({ ...cuentaForm, nombre: e.target.value })}
-                className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500" />
+          {/* Formulario nueva cuenta */}
+          {mostrarFormCuenta && (
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 mb-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Nombre</label>
+                <input
+                  type="text"
+                  placeholder="Ej. Ventas"
+                  value={cuentaForm.nombre}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, nombre: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Servicio</label>
+                <select
+                  value={cuentaForm.servicio}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, servicio: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm"
+                >
+                  <option value="gmail">Gmail</option>
+                  <option value="hotmail">Outlook/Hotmail</option>
+                  <option value="yahoo">Yahoo</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Correo</label>
+                <input
+                  type="email"
+                  placeholder="correo@gmail.com"
+                  value={cuentaForm.email}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, email: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Contraseña de app</label>
+                <input
+                  type="password"
+                  placeholder="••••••••••••••••"
+                  value={cuentaForm.password}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, password: e.target.value })}
+                  className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                />
+              </div>
+              <div className="col-span-2 flex gap-2 justify-end">
+                <button
+                  onClick={() => setMostrarFormCuenta(false)}
+                  className="px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-300 text-sm hover:bg-slate-600 transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleCreateCuenta}
+                  className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-500 transition-all"
+                >
+                  Guardar cuenta
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Servicio</label>
-              <select value={cuentaForm.servicio}
-                onChange={(e) => setCuentaForm({ ...cuentaForm, servicio: e.target.value })}
-                className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm">
-                <option value="gmail">Gmail</option>
-                <option value="hotmail">Outlook/Hotmail</option>
-                <option value="yahoo">Yahoo</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Correo</label>
-              <input type="email" placeholder="correo@gmail.com" value={cuentaForm.email}
-                onChange={(e) => setCuentaForm({ ...cuentaForm, email: e.target.value })}
-                className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Contraseña de app</label>
-              <input type="password" placeholder="••••••••••••••••" value={cuentaForm.password}
-                onChange={(e) => setCuentaForm({ ...cuentaForm, password: e.target.value })}
-                className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500" />
-            </div>
-            <div className="col-span-2 flex gap-2 justify-end">
-              <button onClick={() => setMostrarFormCuenta(false)}
-                className="px-4 py-2 rounded-lg bg-slate-700 border border-slate-600 text-slate-300 text-sm hover:bg-slate-600 transition-all">
-                Cancelar
-              </button>
-              <button onClick={handleCreateCuenta}
-                className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-500 transition-all">
-                Guardar cuenta
-              </button>
-            </div>
-          </div>
-        )}
+          )}
 
         {cuentas.length === 0 ? (
           <div className="text-center py-8 text-slate-500 text-sm">No hay cuentas configuradas</div>
@@ -751,7 +800,7 @@ export default function Configuracion() {
               <Tag size={14} /><span>Versión CRM</span>
             </div>
             <span className="inline-block bg-blue-600/20 border border-blue-500/40 text-blue-300 text-xs font-bold px-2 py-1 rounded-md">
-              v1.0.0
+              v1.0.6
             </span>
           </div>
 

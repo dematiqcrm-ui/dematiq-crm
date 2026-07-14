@@ -20,15 +20,10 @@ const telefonoSchema = new mongoose.Schema(
 const contactoSchema = new mongoose.Schema(
   {
     nombre: String,
-
     puesto: String,
-
     correo: String,
 
-    telefonos: {
-      type: [telefonoSchema],
-      default: [],
-    },
+    telefono: String,
 
     nota: {
       type: String,
@@ -40,9 +35,7 @@ const contactoSchema = new mongoose.Schema(
       default: null,
     },
   },
-  {
-    _id: false,
-  }
+  { _id: false }
 );
 
 const empresaSchema = new mongoose.Schema(

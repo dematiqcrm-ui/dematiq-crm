@@ -10,6 +10,11 @@ export const getResumen =
     return res.data;
   };
 
+export const getUltimosCorreos = async () => {
+  const res = await api.get("/correo/historial-global");
+  return res.data;
+};
+
 export const getEmpresasIncompletas =
   async () => {
     const res =

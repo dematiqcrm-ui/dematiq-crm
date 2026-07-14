@@ -13,6 +13,7 @@ import { getCuentas } from "../services/cuentaCorreoService";
 import { getParques } from "../services/parqueService";
 import {
   getEmpresas, createEmpresa, updateEmpresa, deleteEmpresa,
+  registrarCorreo,
 } from "../services/empresaService";
 
 const modalVariants = {
@@ -199,15 +200,26 @@ export default function Empresas() {
   const [enviandoCorreo, setEnviandoCorreo]         = useState(false);
   const [parques, setParques]                       = useState([]);
   const [parqueSeleccionado, setParqueSeleccionado] = useState("");
+<<<<<<< HEAD
+  const [empresas, setEmpresas]             = useState([]);
+  const [search, setSearch]                 = useState("");
+  const [open, setOpen]                     = useState(false);
+  const [editingEmpresa, setEditingEmpresa] = useState(null);
+  const [detailEmpresa, setDetailEmpresa]   = useState(null);
+  const [sortAsc, setSortAsc]               = useState(true);
+=======
   const [empresas, setEmpresas]                     = useState([]);
   const [search, setSearch]                         = useState("");
-  const [sortAsc, setSortAsc]                       = useState(true);
   const [open, setOpen]                             = useState(false);
   const [editingEmpresa, setEditingEmpresa]         = useState(null);
   const [detailEmpresa, setDetailEmpresa]           = useState(null);
-  const [cuentas, setCuentas]                       = useState([]);
+  const [cuentas, setCuentas] = useState([]);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState("");
-  const [detailEmpresaLive, setDetailEmpresaLive]   = useState(null);
+>>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
+
+  // ─── empresa activa en el modal de detalle (sincronizada con cambios) ────────
+  // Se actualiza después de enviar correo para reflejar fechaUltimoCorreo
+  const [detailEmpresaLive, setDetailEmpresaLive] = useState(null);
 
   useEffect(() => { setDetailEmpresaLive(detailEmpresa); }, [detailEmpresa]);
 
@@ -253,7 +265,112 @@ export default function Empresas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Load companies ─────────────────────────────────────────────────────────
+<<<<<<< HEAD
+  /* ─── Enviar correo ────────────────────────────────────────────────────── */
+  const handleEnviarCorreo = async () => {
+    if (!correoForm.asunto || !correoForm.mensaje) {
+      Swal.fire({ icon: "warning", title: "Completa todos los campos", timer: 1400, showConfirmButton: false });
+      return;
+    }
+    setEnviandoCorreo(true);
+    try {
+      const formData = new FormData();
+      formData.append("destinatario",    correoContacto.correo);
+      formData.append("asunto",          correoForm.asunto);
+      formData.append("mensaje",         correoForm.mensaje);
+      formData.append("empresaId",       detailEmpresaLive._id);
+      formData.append("contactoNombre",  correoContacto.nombre);
+      correoForm.adjuntos.forEach((file) => formData.append("adjuntos", file));
+=======
+  useEffect(() => {
+  cargarCuentas();
+    }, []);
+
+const handleEnviarCorreo = async () => {
+  if (!correoForm.asunto || !correoForm.mensaje) {
+    Swal.fire({ icon: "warning", title: "Completa todos los campos", timer: 1400, showConfirmButton: false });
+    return;
+  }
+  if (!cuentaSeleccionada) {
+    Swal.fire({ icon: "warning", title: "Selecciona una cuenta remitente", timer: 1400, showConfirmButton: false });
+    return;
+  }
+  setEnviandoCorreo(true);
+  try {
+    const formData = new FormData();
+    formData.append("destinatario", correoContacto.correo);
+    formData.append("asunto", correoForm.asunto);
+    formData.append("mensaje", correoForm.mensaje);
+    formData.append("empresaId", detailEmpresa._id);
+    formData.append("contactoNombre", correoContacto.nombre);
+    formData.append("cuentaId", cuentaSeleccionada);
+    correoForm.adjuntos.forEach((file) => formData.append("adjuntos", file));
+>>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
+
+      await api.post("/correo/enviar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+<<<<<<< HEAD
+      // ← Registrar fecha de último correo en el contacto
+      await registrarCorreo(detailEmpresaLive._id, correoContacto.correo);
+
+      // Actualizar la empresa en memoria para que la UI refleje la fecha
+      const empresaActualizada = await api.get(`/empresas/${detailEmpresaLive._id}`);
+      const empresaData = empresaActualizada.data;
+
+      // Actualizar en la lista y en el modal de detalle
+      setEmpresas((prev) => prev.map((e) => e._id === empresaData._id ? empresaData : e));
+      setDetailEmpresaLive(empresaData);
+
+      setCorreoForm({ asunto: "", mensaje: "", adjuntos: [] });
+      await Swal.fire({ icon: "success", title: "Correo enviado", timer: 1400, showConfirmButton: false });
+      setCorreoContacto(null);
+      setCorreoForm({ asunto: "", mensaje: "", adjuntos: [] });
+
+      // Refresh so fechaUltimoCorreo updates
+      await cargarEmpresas();
+      const updated = await getEmpresas(parqueSeleccionado);
+      const emp = (Array.isArray(updated) ? updated : []).find((e) => e._id === detailEmpresa._id);
+      if (emp) setDetailEmpresaLive(emp);
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo enviar el correo" });
+    } finally {
+      setEnviandoCorreo(false);
+    }
+  };
+
+  const handleVerHistorial = async (empresa) => {
+    try {
+      const { data } = await api.get(`/correo/historial/${empresa._id}`);
+      setHistorial(data);
+      setVerHistorial(empresa);
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudo cargar el historial" });
+    }
+  };
+=======
+const cargarCuentas = async () => {
+  try {
+    const data = await getCuentas();
+    setCuentas(data);
+    if (data.length > 0) setCuentaSeleccionada(data[0]._id);
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const handleVerHistorial = async (empresa) => {
+  try {
+    const { data } = await api.get(`/correo/historial/${empresa._id}`);
+    setHistorial(data);
+    setVerHistorial(empresa);
+  } catch {
+    Swal.fire({ icon: "error", title: "Error", text: "No se pudo cargar el historial" });
+  }
+};
+>>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
+
   const cargarEmpresas = useCallback(async () => {
     if (!parqueSeleccionado) return;
     try {
@@ -271,55 +388,6 @@ export default function Empresas() {
     if (!isFirstParqueLoad[0]) setSearch("");
     isFirstParqueLoad[0] = false;
   }, [cargarEmpresas]);
-
-  // ── Handlers ───────────────────────────────────────────────────────────────
-  const handleVerHistorial = async (empresa) => {
-    try {
-      const { data } = await api.get(`/correo/historial/${empresa._id}`);
-      setHistorial(data);
-      setVerHistorial(empresa);
-    } catch {
-      Swal.fire({ icon: "error", title: "Error", text: "No se pudo cargar el historial" });
-    }
-  };
-
-  const handleEnviarCorreo = async () => {
-    if (!correoForm.asunto || !correoForm.mensaje) {
-      Swal.fire({ icon: "warning", title: "Completa todos los campos", timer: 1400, showConfirmButton: false });
-      return;
-    }
-    if (!cuentaSeleccionada) {
-      Swal.fire({ icon: "warning", title: "Selecciona una cuenta remitente", timer: 1400, showConfirmButton: false });
-      return;
-    }
-    setEnviandoCorreo(true);
-    try {
-      const formData = new FormData();
-      formData.append("destinatario", correoContacto.correo);
-      formData.append("asunto", correoForm.asunto);
-      formData.append("mensaje", correoForm.mensaje);
-      formData.append("empresaId", detailEmpresa._id);
-      formData.append("contactoNombre", correoContacto.nombre);
-      formData.append("cuentaId", cuentaSeleccionada);
-      correoForm.adjuntos.forEach((file) => formData.append("adjuntos", file));
-
-      await api.post("/correo/enviar", formData);
-
-      Swal.fire({ icon: "success", title: "Correo enviado", timer: 1400, showConfirmButton: false });
-      setCorreoContacto(null);
-      setCorreoForm({ asunto: "", mensaje: "", adjuntos: [] });
-
-      // Refresh so fechaUltimoCorreo updates
-      await cargarEmpresas();
-      const updated = await getEmpresas(parqueSeleccionado);
-      const emp = (Array.isArray(updated) ? updated : []).find((e) => e._id === detailEmpresa._id);
-      if (emp) setDetailEmpresaLive(emp);
-    } catch {
-      Swal.fire({ icon: "error", title: "Error", text: "No se pudo enviar el correo" });
-    } finally {
-      setEnviandoCorreo(false);
-    }
-  };
 
   const handleCreate = async (data) => {
     try {
@@ -505,18 +573,19 @@ export default function Empresas() {
                 </tr>
               ) : (
                 empresasFiltradas.map((empresa) => (
+<<<<<<< HEAD
+                  <tr key={empresa._id} style={{ transition: "background 0.1s" }}
+                    onMouseEnter={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)"); }}
+                    onMouseLeave={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "transparent"); }}>
+=======
                   <tr
                     key={empresa._id}
                     style={{ transition: "background 0.1s" }}
-                    onMouseEnter={(e) => { [...e.currentTarget.children].forEach((td) => { td.style.background = "rgba(255,255,255,0.018)"; }); }}
-                    onMouseLeave={(e) => { [...e.currentTarget.children].forEach((td) => { td.style.background = "transparent"; }); }}
+                    onMouseEnter={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)"); } }
+                    onMouseLeave={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "transparent"); } }
                   >
-                    {/* # */}
-                    <td style={{ ...s.td, color: "rgba(255,255,255,0.18)", fontSize: 11, width: 40 }}>
-                      {empresa.numero || "—"}
-                    </td>
-
-                    {/* Empresa */}
+>>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
+                    <td style={{ ...s.td, color: "rgba(255,255,255,0.18)", fontSize: 11, width: 40 }}>{empresa.numero || "—"}</td>
                     <td style={s.td}>
                       <div style={s.companyName}>{empresa.empresa}</div>
                       {empresa.paginaWeb && (
@@ -549,37 +618,25 @@ export default function Empresas() {
                           {empresa.direccion || <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
                         </div>
                         {empresa.direccion && (
-                          <a
-                            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(empresa.direccion)}`}
-                            target="_blank" rel="noopener noreferrer"
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(empresa.direccion)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
                             title="Ver en Google Maps"
-                            style={{ color: "#60a5fa", flexShrink: 0, display: "flex", alignItems: "center" }}
-                          >
+                            style={{ color: "#60a5fa", flexShrink: 0, display: "flex", alignItems: "center" }}>
                             <MapPin size={12} />
                           </a>
                         )}
-                      </div>
-                    </td>
-
-                    {/* Teléfono */}
-                    <td style={{ ...s.td, whiteSpace: "nowrap" }}>
+                    </div>
+                  </td><td style={{ ...s.td, whiteSpace: "nowrap" }}>
                       {empresa.telefono || <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
-                    </td>
-
-                    {/* Página web */}
-                    <td style={s.td}>
+                    </td><td style={s.td}>
                       {empresa.paginaWeb ? (
                         <a href={empresa.paginaWeb} target="_blank" rel="noopener noreferrer"
                           style={{ color: "#60a5fa", fontSize: 11, display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
                           <ExternalLink size={11} />Ver sitio
                         </a>
-                      ) : (
-                        <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>
-                      )}
-                    </td>
-
-                    {/* Contactos */}
-                    <td style={s.td}>
+                      ) : <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
+                    </td><td style={s.td}>
                       {empresa.contactos?.length > 0 ? (
                         <button
                           onClick={() => setDetailEmpresa(empresa)}
@@ -595,21 +652,33 @@ export default function Empresas() {
                           <Users size={10} />
                           {empresa.contactos.length} {empresa.contactos.length === 1 ? "contacto" : "contactos"}
                         </button>
-                      ) : (
-                        <span style={{ color: "rgba(255,255,255,0.13)", fontSize: 12 }}>—</span>
-                      )}
+                      ) : <span style={{ color: "rgba(255,255,255,0.13)", fontSize: 12 }}>—</span>}
+                    </td><td style={s.td}>
+                      <div style={{ display: "flex", gap: 5 }}>
+                        <button onClick={() => handleVerHistorial(empresa)} style={{ ...s.actBtn("hist"), color: "#34d399" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(52,211,153,0.1)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Historial">
+                          <Clock size={12} />
+                        </button>
+                        <button onClick={() => setEditingEmpresa(empresa)} style={s.actBtn("edit")}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(251,191,36,0.1)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Editar">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => handleDelete(empresa._id)} style={s.actBtn("delete")}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,0.1)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Eliminar">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </td>
-
-                    {/* Acciones */}
+<<<<<<< HEAD
                     <td style={s.td}>
                       <div style={{ display: "flex", gap: 5 }}>
-                        <button
-                          onClick={() => handleVerHistorial(empresa)}
-                          style={s.actBtn("hist")}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(52,211,153,0.1)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                          title="Historial"
-                        >
+                        <button onClick={() => handleVerHistorial(empresa)}
+                          style={{ ...s.actBtn("hist"), color: "#34d399" }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(52,211,153,0.1)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Historial">
                           <Clock size={12} />
                         </button>
                         <button
@@ -713,7 +782,6 @@ export default function Empresas() {
               <div>
                 {detailEmpresaLive.contactos.map((c, i) => (
                   <div key={i} style={s.contactCard}>
-                    {/* Avatar + nombre + botón correo */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                       <div style={{
                         width: 34, height: 34, borderRadius: "50%",
@@ -747,31 +815,27 @@ export default function Empresas() {
                       )}
                     </div>
 
-                    {/* Correo */}
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={s.contactLabel}>Correo</div>
-                      <div style={s.contactValue}>
-                        {c.correo
-                          ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a>
-                          : <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}
-                      </div>
+<<<<<<< HEAD
+                    {/* Datos del contacto */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 8 }}>
+                      {[
+                        { label: "Correo", value: c.correo ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a> : null },
+                        { label: "Teléfono", value: c.telefono },
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <div style={s.contactLabel}>{label}</div>
+                          <div style={s.contactValue}>{value || <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}</div>
+                        </div>
+                      ))}
                     </div>
 
-                    {/* Teléfono(s) */}
-                    <div style={{ marginBottom: 8 }}>
-                      <div style={s.contactLabel}>
-                        Teléfono{getTelefonosContacto(c).length > 1 ? "s" : ""}
-                      </div>
-                      <TelefonosContacto contacto={c} />
-                    </div>
-
-                    {/* Last email sent */}
+                    {/* Último correo enviado */}
                     <div style={{ marginBottom: c.nota ? 8 : 0 }}>
                       <div style={s.contactLabel}>Último correo enviado</div>
                       <UltimoCorreoBadge fecha={c.fechaUltimoCorreo} />
                     </div>
 
-                    {/* Note */}
+                    {/* Nota del contacto */}
                     {c.nota && (
                       <div style={{
                         marginTop: 8, padding: "8px 10px", borderRadius: 7,
@@ -783,6 +847,113 @@ export default function Empresas() {
                         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{c.nota}</div>
                       </div>
                     )}
+=======
+{/* Modal Enviar Correo */}
+<AnimatePresence>
+  {correoContacto && (
+    <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCorreoContacto(null)}>
+      <motion.div style={{ ...s.modalBox, maxWidth: 480 }} variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={(e) => e.stopPropagation()}>
+        <div style={s.modalHeader}>
+          <div>
+            <div style={s.modalTitle}>Enviar correo</div>
+            <div style={s.modalSubtitle}>Para: {correoContacto.correo}</div>
+          </div>
+          <button onClick={() => setCorreoContacto(null)} style={s.modalCloseBtn}
+            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+            <X size={15} />
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div>
+            <div style={s.contactLabel}>Remitente</div>
+            <select
+              value={cuentaSeleccionada}
+              onChange={(e) => setCuentaSeleccionada(e.target.value)}
+              style={{
+                width: "100%", height: 36, marginTop: 6,
+                background: "#131720", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8, color: "#e2e8f0", fontSize: 13,
+                padding: "0 12px", outline: "none", fontFamily: "inherit",
+                boxSizing: "border-box",
+              }}
+            >
+              {cuentas.length === 0 && <option value="">Sin cuentas configuradas</option>}
+              {cuentas.map((c) => (
+                <option key={c._id} value={c._id}>{c.nombre} — {c.email}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div style={s.contactLabel}>Asunto</div>
+            <input
+              type="text"
+              placeholder="Asunto del correo"
+              value={correoForm.asunto}
+              onChange={(e) => setCorreoForm({ ...correoForm, asunto: e.target.value })}
+              style={{ ...s.searchInput, padding: "0 12px", width: "100%", boxSizing: "border-box", marginTop: 6 }}
+              onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
+              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+          </div>
+          <div>
+            <div style={s.contactLabel}>Mensaje</div>
+            <textarea
+              placeholder="Escribe tu mensaje aquí..."
+              value={correoForm.mensaje}
+              onChange={(e) => setCorreoForm({ ...correoForm, mensaje: e.target.value })}
+              rows={6}
+              style={{
+                width: "100%", marginTop: 6, padding: "10px 12px",
+                background: "#131720", border: "1px solid rgba(255,255,255,0.1)",
+                borderRadius: 8, color: "#e2e8f0", fontSize: 13,
+                fontFamily: "inherit", resize: "vertical", boxSizing: "border-box",
+                outline: "none",
+              }}
+              onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
+              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
+            />
+          </div>
+          <div>
+            <div style={s.contactLabel}>Adjuntos</div>
+            <label style={{
+              display: "flex", alignItems: "center", gap: 8, marginTop: 6,
+              padding: "8px 12px", borderRadius: 8, cursor: "pointer",
+              border: "1px dashed rgba(255,255,255,0.15)",
+              background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)",
+              fontSize: 12, transition: "border-color 0.15s",
+            }}
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(99,130,246,0.4)"}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}
+            >
+              <Paperclip size={13} />
+              Seleccionar archivos
+              <input
+                type="file"
+                multiple
+                style={{ display: "none" }}
+                onChange={(e) => setCorreoForm({ ...correoForm, adjuntos: [...correoForm.adjuntos, ...Array.from(e.target.files)] })}
+              />
+            </label>
+            {correoForm.adjuntos.length > 0 && (
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                {correoForm.adjuntos.map((file, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "5px 10px", borderRadius: 6,
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {file.name}
+                    </span>
+                    <button
+                      onClick={() => setCorreoForm({ ...correoForm, adjuntos: correoForm.adjuntos.filter((_, j) => j !== i) })}
+                      style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: "0 4px", fontSize: 14, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
+>>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
                   </div>
                 ))}
               </div>
@@ -791,7 +962,7 @@ export default function Empresas() {
         )}
       </AnimatePresence>
 
-      {/* ── Modal: Enviar Correo ─────────────────────────────────────────────── */}
+      {/* Modal Enviar Correo */}
       <AnimatePresence>
         {correoContacto && (
           <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCorreoContacto(null)}>
@@ -803,55 +974,22 @@ export default function Empresas() {
                   <div style={s.modalSubtitle}>Para: {correoContacto.correo}</div>
                 </div>
                 <button onClick={() => setCorreoContacto(null)} style={s.modalCloseBtn}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
-                  <X size={15} />
-                </button>
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
               </div>
-
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                {/* Remitente */}
-                <div>
-                  <div style={s.contactLabel}>Remitente</div>
-                  <select
-                    value={cuentaSeleccionada}
-                    onChange={(e) => setCuentaSeleccionada(e.target.value)}
-                    style={{
-                      width: "100%", height: 36, marginTop: 6,
-                      background: "#131720", border: "1px solid rgba(255,255,255,0.1)",
-                      borderRadius: 8, color: "#e2e8f0", fontSize: 13,
-                      padding: "0 12px", outline: "none", fontFamily: "inherit",
-                      boxSizing: "border-box",
-                    }}
-                  >
-                    {cuentas.length === 0 && <option value="">Sin cuentas configuradas</option>}
-                    {cuentas.map((cuenta) => (
-                      <option key={cuenta._id} value={cuenta._id}>{cuenta.nombre} — {cuenta.email}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Asunto */}
                 <div>
                   <div style={s.contactLabel}>Asunto</div>
-                  <input
-                    type="text"
-                    placeholder="Asunto del correo"
-                    value={correoForm.asunto}
-                    onChange={(e) => setCorreoForm({ ...correoForm, asunto: e.target.value })}
+                  <input type="text" placeholder="Asunto del correo"
+                    value={correoForm.asunto} onChange={(e) => setCorreoForm({ ...correoForm, asunto: e.target.value })}
                     style={{ ...s.searchInput, padding: "0 12px", width: "100%", boxSizing: "border-box", marginTop: 6 }}
-                    onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; }}
-                    onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                  />
+                    onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
+                    onBlur={(e)  => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                 </div>
-
-                {/* Mensaje */}
                 <div>
                   <div style={s.contactLabel}>Mensaje</div>
-                  <textarea
-                    placeholder="Escribe tu mensaje aquí..."
-                    value={correoForm.mensaje}
-                    onChange={(e) => setCorreoForm({ ...correoForm, mensaje: e.target.value })}
+                  <textarea placeholder="Escribe tu mensaje aquí..."
+                    value={correoForm.mensaje} onChange={(e) => setCorreoForm({ ...correoForm, mensaje: e.target.value })}
                     rows={6}
                     style={{
                       width: "100%", marginTop: 6, padding: "10px 12px",
@@ -859,30 +997,23 @@ export default function Empresas() {
                       borderRadius: 8, color: "#e2e8f0", fontSize: 13,
                       fontFamily: "inherit", resize: "vertical", boxSizing: "border-box", outline: "none",
                     }}
-                    onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; }}
-                    onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
-                  />
+                    onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
+                    onBlur={(e)  => e.target.style.borderColor = "rgba(255,255,255,0.1)"} />
                 </div>
-
-                {/* Adjuntos */}
                 <div>
                   <div style={s.contactLabel}>Adjuntos</div>
-                  <label
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8, marginTop: 6,
-                      padding: "8px 12px", borderRadius: 8, cursor: "pointer",
-                      border: "1px dashed rgba(255,255,255,0.15)",
-                      background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)",
-                      fontSize: 12, transition: "border-color 0.15s",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(99,130,246,0.4)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }}
-                  >
+                  <label style={{
+                    display: "flex", alignItems: "center", gap: 8, marginTop: 6,
+                    padding: "8px 12px", borderRadius: 8, cursor: "pointer",
+                    border: "1px dashed rgba(255,255,255,0.15)",
+                    background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)",
+                    fontSize: 12, transition: "border-color 0.15s",
+                  }}
+                    onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(99,130,246,0.4)"}
+                    onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}>
                     <Paperclip size={13} />Seleccionar archivos
-                    <input
-                      type="file" multiple style={{ display: "none" }}
-                      onChange={(e) => setCorreoForm({ ...correoForm, adjuntos: [...correoForm.adjuntos, ...Array.from(e.target.files)] })}
-                    />
+                    <input type="file" multiple style={{ display: "none" }}
+                      onChange={(e) => setCorreoForm({ ...correoForm, adjuntos: [...correoForm.adjuntos, ...Array.from(e.target.files)] })} />
                   </label>
                   {correoForm.adjuntos.length > 0 && (
                     <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -895,21 +1026,14 @@ export default function Empresas() {
                           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {file.name}
                           </span>
-                          <button
-                            onClick={() => setCorreoForm({ ...correoForm, adjuntos: correoForm.adjuntos.filter((_, j) => j !== i) })}
-                            style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: "0 4px", fontSize: 14, lineHeight: 1 }}
-                          >×</button>
+                          <button onClick={() => setCorreoForm({ ...correoForm, adjuntos: correoForm.adjuntos.filter((_, j) => j !== i) })}
+                            style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: "0 4px", fontSize: 14, lineHeight: 1 }}>×</button>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-
-                {/* Send button */}
-                <button
-                  type="button"
-                  onClick={handleEnviarCorreo}
-                  disabled={enviandoCorreo}
+                <button type="button" onClick={handleEnviarCorreo} disabled={enviandoCorreo}
                   style={{
                     height: 38, borderRadius: 8,
                     background: enviandoCorreo ? "rgba(59,91,255,0.4)" : "#3b5bff",

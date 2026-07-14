@@ -6,7 +6,7 @@ const CAMPO_CONTACTO_VACIO = {
   nombre: "",
   puesto: "",
   correo: "",
-  telefonos: [{ ...TELEFONO_VACIO }],
+  telefono: "",
   nota: "",
 };
 
@@ -23,6 +23,7 @@ export default function EmpresaForm({
     giroEmpresa: "",
     direccion: "",
     telefono: "",
+    telefono2: "",
     paginaWeb: "",
     notas: "",
     contactos: [{ ...CAMPO_CONTACTO_VACIO }],
@@ -30,6 +31,7 @@ export default function EmpresaForm({
 
   useEffect(() => {
     if (initialData) {
+        console.log("initialData contactos:", initialData.contactos);
       setForm({
         parqueIndustrialId: initialData.parqueIndustrialId || parqueIndustrialId || "",
         numero:      initialData.numero      || "",
@@ -37,6 +39,7 @@ export default function EmpresaForm({
         giroEmpresa: initialData.giroEmpresa || "",
         direccion:   initialData.direccion   || "",
         telefono:    initialData.telefono    || "",
+        telefono2:   initialData.telefono2   || "",
         paginaWeb:   initialData.paginaWeb   || "",
         notas:       initialData.notas       || "",
         contactos:
@@ -45,18 +48,8 @@ export default function EmpresaForm({
                 nombre:   c.nombre   || "",
                 puesto:   c.puesto   || "",
                 correo:   c.correo   || "",
-                // Compatibilidad: si el contacto viene del esquema viejo con
-                // "telefono" (string único), lo convertimos a la nueva lista.
-                telefonos:
-                  c.telefonos?.length > 0
-                    ? c.telefonos.map((t) => ({
-                        tipo:   t.tipo   || "",
-                        numero: t.numero || "",
-                      }))
-                    : c.telefono
-                    ? [{ tipo: "", numero: c.telefono }]
-                    : [{ ...TELEFONO_VACIO }],
-                nota: c.nota || "",
+                telefono: c.telefono || "",
+                nota:     c.nota     || "",       // ← nuevo campo
                 fechaUltimoCorreo: c.fechaUltimoCorreo || null,
               }))
             : [{ ...CAMPO_CONTACTO_VACIO }],
@@ -398,6 +391,11 @@ export default function EmpresaForm({
                       <span style={{ fontSize: 13, lineHeight: 1 }}>+</span> Agregar teléfono
                     </button>
                   </div>
+                </div>
+                <div>
+                  <label className="ef-label">Teléfono 2</label>
+                  <input type="text" name="telefono2" placeholder="442 987 6543"
+                    value={contacto.telefono2 || ""} onChange={(e) => handleContactoChange(index, e)} className="ef-input" />
                 </div>
               </div>
 

@@ -46,10 +46,20 @@ export const testCuenta = async (req, res) => {
     const cuenta = await CuentaCorreo.findById(req.params.id);
     if (!cuenta) return res.status(404).json({ message: "Cuenta no encontrada" });
 
-    const transporter = nodemailer.createTransport({
-      service: cuenta.servicio,
-      auth: { user: cuenta.email, pass: cuenta.password },
-    });
+    const transportConfig = cuenta.smtpHost
+      ? {
+          host: cuenta.smtpHost,
+          port: cuenta.smtpPort || 587,
+          secure: false,
+          auth: { user: cuenta.email, pass: cuenta.password },
+          tls: { ciphers: "SSLv3" },
+        }
+      : {
+          service: cuenta.servicio,
+          auth: { user: cuenta.email, pass: cuenta.password },
+        };
+
+    const transporter = nodemailer.createTransport(transportConfig);
 
     await transporter.sendMail({
       from: `"${cuenta.nombre}" <${cuenta.email}>`,
@@ -60,6 +70,7 @@ export const testCuenta = async (req, res) => {
 
     res.json({ ok: true, message: "Correo de prueba enviado correctamente" });
   } catch (error) {
+    console.error("Error en testCuenta:", error);
     res.status(500).json({ message: "No se pudo conectar: " + error.message });
   }
 };

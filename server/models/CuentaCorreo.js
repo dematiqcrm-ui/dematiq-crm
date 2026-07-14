@@ -6,6 +6,8 @@ const cuentaCorreoSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     servicio: { type: String, default: "gmail" },
+    smtpHost: { type: String, default: "" },
+    smtpPort: { type: Number, default: 587 },
     activa: { type: Boolean, default: true },
   },
   { timestamps: true }

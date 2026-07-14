@@ -4,7 +4,33 @@ import CuentaCorreo from "../models/CuentaCorreo.js";
 
 export const enviarCorreo = async (req, res) => {
   try {
-    const { destinatario, asunto, mensaje, empresaId, contactoNombre } = req.body;
+    const { destinatario, asunto, mensaje, empresaId, contactoNombre, cuentaId } = req.body;
+
+    let transporter;
+    let remitenteEmail;
+    let remitenteNombre;
+
+    if (cuentaId) {
+  const cuenta = await CuentaCorreo.findById(cuentaId);
+  if (!cuenta) return res.status(404).json({ message: "Cuenta de correo no encontrada" });
+  
+  const transportConfig = cuenta.smtpHost
+    ? {
+        host: cuenta.smtpHost,
+        port: cuenta.smtpPort || 587,
+        secure: false,
+        auth: { user: cuenta.email, pass: cuenta.password },
+        tls: { ciphers: "SSLv3" },
+      }
+    : {
+        service: cuenta.servicio,
+        auth: { user: cuenta.email, pass: cuenta.password },
+      };
+
+      transporter = nodemailer.createTransport(transportConfig);
+      remitenteEmail = cuenta.email;
+      remitenteNombre = cuenta.nombre;
+    }
 
     const adjuntos = req.files?.map((file) => ({
       filename: file.originalname,
@@ -37,7 +63,7 @@ const remitenteEmail =
   cuenta.email;
 
     await transporter.sendMail({
-      from: `"DEMATIQ CRM" <${remitenteEmail}>`,
+      from: `"DEMATIQ CRM" <${process.env.MAIL_USER}>`,
       to: destinatario,
       subject: asunto,
       attachments: adjuntos,
@@ -78,6 +104,19 @@ export const getHistorial = async (req, res) => {
     const { empresaId } = req.params;
     const historial = await Historial.find({ empresaId })
       .populate("enviadoPor", "nombre email")
+      .sort({ createdAt: -1 })
+      .limit(20);
+    res.json(historial);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getHistorialGlobal = async (req, res) => {
+  try {
+    const historial = await Historial.find()
+      .populate("enviadoPor", "nombre")
+      .populate("empresaId", "empresa")
       .sort({ createdAt: -1 })
       .limit(20);
     res.json(historial);
