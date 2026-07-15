@@ -22,18 +22,10 @@ const contactoSchema = new mongoose.Schema(
     nombre: String,
     puesto: String,
     correo: String,
-
     telefono: String,
-
-    nota: {
-      type: String,
-      default: "",
-    },
-
-    fechaUltimoCorreo: {
-      type: Date,
-      default: null,
-    },
+    telefonos: { type: [telefonoSchema], default: [] },
+    nota: { type: String, default: "" },
+    fechaUltimoCorreo: { type: Date, default: null },
   },
   { _id: false }
 );

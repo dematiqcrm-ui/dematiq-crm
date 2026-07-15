@@ -4,6 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 import { getResumen } from "../services/reporteService";
 import { getCuentas, createCuenta, deleteCuenta, testCuenta } from "../services/cuentaCorreoService";
 
+
 import {
   User, Lock, Database, Download,
   FileSpreadsheet, FileText, Wifi, Clock, Tag,
@@ -90,6 +91,7 @@ function PinGuard({ onSuccess }) {
   const [error, setError]     = useState(false);
   const [showPin, setShowPin] = useState(false);
   const [shake, setShake]     = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
 
   const handleChange = (val) => {
     if (!/^\d*$/.test(val)) return;
@@ -190,6 +192,8 @@ function ExportFilterPanel({ exporting, onExport }) {
       .catch(console.error)
       .finally(() => setLoadingF(false));
   }, []);
+
+    
 
   // Al cambiar tipo, resetear el valor seleccionado
   const handleTipoChange = (t) => {
@@ -359,9 +363,13 @@ export default function Configuracion() {
   const [sistemaDesbloqueado, setSistemaDesbloqueado] = useState(false);
   const [tablaExport, setTablaExport] = useState("todo");
   const [cuentas, setCuentas]           = useState([]);
-  const [cuentaForm, setCuentaForm]     = useState({ nombre: "", email: "", password: "", servicio: "gmail" });
+  const [cuentaForm, setCuentaForm] = useState({ nombre: "", email: "", password: "", servicio: "gmail", smtpHost: "", smtpPort: 587 });
   const [mostrarFormCuenta, setMostrarFormCuenta] = useState(false);
   const [testingCuenta, setTestingCuenta] = useState(null);
+  const [theme, setTheme] = useState(() => localStorage.getItem("theme") || "dark");
+  const [dbStats, setDbStats] = useState(null);
+  const [textScale, setTextScale] = useState(1);
+  const [dbStatsLoading, setDbStatsLoading] = useState(false);
 
 
   // ─── Funciones de carga ────────────────────────────────────────────────────
@@ -448,11 +456,12 @@ const handleTestCuenta = async (id) => {
   }, [theme]);
 
   // ─── Carga inicial ─────────────────────────────────────────────────────────
-  useEffect(() => {
+useEffect(() => {
   cargarResumen();
   checkApiStatus();
   cargarCuentas();
-}, [cargarResumen, checkApiStatus, cargarCuentas]);
+  cargarDbStats();
+}, [cargarResumen, checkApiStatus, cargarCuentas, cargarDbStats]);
 
   // ─── Contraseña ────────────────────────────────────────────────────────────
   const handlePasswordChange = () => {
@@ -704,19 +713,20 @@ const handleTestCuenta = async (id) => {
                 <label className="block text-xs text-slate-400 mb-1">Servicio</label>
                 <select
                   value={cuentaForm.servicio}
-                  onChange={(e) => setCuentaForm({ ...cuentaForm, servicio: e.target.value })}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, servicio: e.target.value, smtpHost: "", smtpPort: 587 })}
                   className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm"
                 >
                   <option value="gmail">Gmail</option>
                   <option value="hotmail">Outlook/Hotmail</option>
                   <option value="yahoo">Yahoo</option>
+                  <option value="custom">SMTP personalizado</option>
                 </select>
               </div>
               <div>
                 <label className="block text-xs text-slate-400 mb-1">Correo</label>
                 <input
                   type="email"
-                  placeholder="correo@gmail.com"
+                  placeholder="correo@dominio.com"
                   value={cuentaForm.email}
                   onChange={(e) => setCuentaForm({ ...cuentaForm, email: e.target.value })}
                   className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
@@ -732,6 +742,30 @@ const handleTestCuenta = async (id) => {
                   className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
                 />
               </div>
+              {cuentaForm.servicio === "custom" && (
+                <>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Host SMTP</label>
+                    <input
+                      type="text"
+                      placeholder="smtp.office365.com"
+                      value={cuentaForm.smtpHost || ""}
+                      onChange={(e) => setCuentaForm({ ...cuentaForm, smtpHost: e.target.value })}
+                      className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1">Puerto</label>
+                    <input
+                      type="number"
+                      placeholder="587"
+                      value={cuentaForm.smtpPort || 587}
+                      onChange={(e) => setCuentaForm({ ...cuentaForm, smtpPort: parseInt(e.target.value) })}
+                      className="w-full p-2.5 rounded-lg bg-slate-700 border border-slate-600 text-white text-sm placeholder-slate-500"
+                    />
+                  </div>
+                </>
+              )}
               <div className="col-span-2 flex gap-2 justify-end">
                 <button
                   onClick={() => setMostrarFormCuenta(false)}

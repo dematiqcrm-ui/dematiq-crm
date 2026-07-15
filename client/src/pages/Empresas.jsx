@@ -70,10 +70,7 @@ const s = {
     background: "rgba(255,255,255,0.02)", whiteSpace: "nowrap",
     borderBottom: "1px solid rgba(255,255,255,0.05)",
   },
-  td: {
-    padding: "10px 12px", color: "rgba(255,255,255,0.55)",
-    borderTop: "1px solid rgba(255,255,255,0.035)", verticalAlign: "middle",
-  },
+  td: { padding: "10px 12px", color: "rgba(255,255,255,0.55)", borderTop: "1px solid rgba(255,255,255,0.035)", verticalAlign: "middle" },
   companyName: { fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.88)" },
   companyDomain: { fontSize: 10, color: "rgba(255,255,255,0.2)", marginTop: 2 },
   actBtn: (variant) => ({
@@ -81,7 +78,7 @@ const s = {
     display: "flex", alignItems: "center", justifyContent: "center",
     cursor: "pointer", border: "1px solid rgba(255,255,255,0.07)",
     background: "transparent",
-    color: variant === "edit" ? "#fbbf24" : variant === "hist" ? "#34d399" : "#f87171",
+    color: variant === "edit" ? "#fbbf24" : "#f87171",
     transition: "all 0.15s",
   }),
   modalBackdrop: {
@@ -154,89 +151,28 @@ function UltimoCorreoBadge({ fecha }) {
   );
 }
 
-// Devuelve la lista de teléfonos de un contacto, con compatibilidad hacia
-// atrás para el esquema viejo que guardaba un solo "telefono" (string).
-function getTelefonosContacto(c) {
-  if (c.telefonos?.length > 0) return c.telefonos;
-  if (c.telefono) return [{ tipo: "", numero: c.telefono }];
-  return [];
-}
-
-function TelefonosContacto({ contacto }) {
-  const telefonos = getTelefonosContacto(contacto);
-  if (telefonos.length === 0) {
-    return <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>;
-  }
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
-      {telefonos.map((t, i) => (
-        <span key={i} style={{
-          display: "inline-flex", alignItems: "center", gap: 5,
-          padding: "3px 9px", borderRadius: 6,
-          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-          fontSize: 12, color: "rgba(255,255,255,0.7)", whiteSpace: "nowrap",
-        }}>
-          {t.tipo && (
-            <span style={{
-              fontSize: 9, fontWeight: 600, color: "rgba(129,140,248,0.85)",
-              textTransform: "uppercase", letterSpacing: "0.05em",
-            }}>
-              {t.tipo}
-            </span>
-          )}
-          {t.numero}
-        </span>
-      ))}
-    </div>
-  );
-}
-
 export default function Empresas() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [historial, setHistorial]                   = useState([]);
-  const [verHistorial, setVerHistorial]             = useState(false);
-  const [correoContacto, setCorreoContacto]         = useState(null);
-  const [correoForm, setCorreoForm]                 = useState({ asunto: "", mensaje: "", adjuntos: [] });
-  const [enviandoCorreo, setEnviandoCorreo]         = useState(false);
-  const [parques, setParques]                       = useState([]);
+  const [historial, setHistorial]           = useState([]);
+  const [verHistorial, setVerHistorial]     = useState(false);
+  const [correoContacto, setCorreoContacto] = useState(null);
+  const [correoForm, setCorreoForm]         = useState({ asunto: "", mensaje: "", adjuntos: [] });
+  const [enviandoCorreo, setEnviandoCorreo] = useState(false);
+  const [parques, setParques]               = useState([]);
   const [parqueSeleccionado, setParqueSeleccionado] = useState("");
-<<<<<<< HEAD
   const [empresas, setEmpresas]             = useState([]);
   const [search, setSearch]                 = useState("");
   const [open, setOpen]                     = useState(false);
   const [editingEmpresa, setEditingEmpresa] = useState(null);
   const [detailEmpresa, setDetailEmpresa]   = useState(null);
   const [sortAsc, setSortAsc]               = useState(true);
-=======
-  const [empresas, setEmpresas]                     = useState([]);
-  const [search, setSearch]                         = useState("");
-  const [open, setOpen]                             = useState(false);
-  const [editingEmpresa, setEditingEmpresa]         = useState(null);
-  const [detailEmpresa, setDetailEmpresa]           = useState(null);
-  const [cuentas, setCuentas] = useState([]);
+  const [cuentas, setCuentas]               = useState([]);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState("");
->>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
-
-  // ─── empresa activa en el modal de detalle (sincronizada con cambios) ────────
-  // Se actualiza después de enviar correo para reflejar fechaUltimoCorreo
   const [detailEmpresaLive, setDetailEmpresaLive] = useState(null);
 
   useEffect(() => { setDetailEmpresaLive(detailEmpresa); }, [detailEmpresa]);
 
-  // ── Load accounts ──────────────────────────────────────────────────────────
-  const cargarCuentas = useCallback(async () => {
-    try {
-      const data = await getCuentas();
-      setCuentas(data);
-      if (data.length > 0) setCuentaSeleccionada(data[0]._id);
-    } catch (err) {
-      console.error(err);
-    }
-  }, []);
-
-  useEffect(() => { cargarCuentas(); }, [cargarCuentas]);
-
-  // ── Load parks ─────────────────────────────────────────────────────────────
+  /* ─── Carga parques ────────────────────────────────────────────────────── */
   useEffect(() => {
     const fetchParques = async () => {
       try {
@@ -265,74 +201,57 @@ export default function Empresas() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-<<<<<<< HEAD
+  /* ─── Carga cuentas de correo ──────────────────────────────────────────── */
+  useEffect(() => {
+    const cargarCuentas = async () => {
+      try {
+        const data = await getCuentas();
+        setCuentas(data);
+        if (data.length > 0) setCuentaSeleccionada(data[0]._id);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    cargarCuentas();
+  }, []);
+
   /* ─── Enviar correo ────────────────────────────────────────────────────── */
   const handleEnviarCorreo = async () => {
     if (!correoForm.asunto || !correoForm.mensaje) {
       Swal.fire({ icon: "warning", title: "Completa todos los campos", timer: 1400, showConfirmButton: false });
       return;
     }
+    if (!cuentaSeleccionada) {
+      Swal.fire({ icon: "warning", title: "Selecciona una cuenta remitente", timer: 1400, showConfirmButton: false });
+      return;
+    }
     setEnviandoCorreo(true);
     try {
       const formData = new FormData();
-      formData.append("destinatario",    correoContacto.correo);
-      formData.append("asunto",          correoForm.asunto);
-      formData.append("mensaje",         correoForm.mensaje);
-      formData.append("empresaId",       detailEmpresaLive._id);
-      formData.append("contactoNombre",  correoContacto.nombre);
+      formData.append("destinatario",   correoContacto.correo);
+      formData.append("asunto",         correoForm.asunto);
+      formData.append("mensaje",        correoForm.mensaje);
+      formData.append("empresaId",      detailEmpresaLive._id);
+      formData.append("contactoNombre", correoContacto.nombre);
+      formData.append("cuentaId",       cuentaSeleccionada);
       correoForm.adjuntos.forEach((file) => formData.append("adjuntos", file));
-=======
-  useEffect(() => {
-  cargarCuentas();
-    }, []);
-
-const handleEnviarCorreo = async () => {
-  if (!correoForm.asunto || !correoForm.mensaje) {
-    Swal.fire({ icon: "warning", title: "Completa todos los campos", timer: 1400, showConfirmButton: false });
-    return;
-  }
-  if (!cuentaSeleccionada) {
-    Swal.fire({ icon: "warning", title: "Selecciona una cuenta remitente", timer: 1400, showConfirmButton: false });
-    return;
-  }
-  setEnviandoCorreo(true);
-  try {
-    const formData = new FormData();
-    formData.append("destinatario", correoContacto.correo);
-    formData.append("asunto", correoForm.asunto);
-    formData.append("mensaje", correoForm.mensaje);
-    formData.append("empresaId", detailEmpresa._id);
-    formData.append("contactoNombre", correoContacto.nombre);
-    formData.append("cuentaId", cuentaSeleccionada);
-    correoForm.adjuntos.forEach((file) => formData.append("adjuntos", file));
->>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
 
       await api.post("/correo/enviar", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-<<<<<<< HEAD
-      // ← Registrar fecha de último correo en el contacto
+      // Registrar fecha de último correo en el contacto
       await registrarCorreo(detailEmpresaLive._id, correoContacto.correo);
 
-      // Actualizar la empresa en memoria para que la UI refleje la fecha
+      // Actualizar empresa en memoria
       const empresaActualizada = await api.get(`/empresas/${detailEmpresaLive._id}`);
       const empresaData = empresaActualizada.data;
-
-      // Actualizar en la lista y en el modal de detalle
       setEmpresas((prev) => prev.map((e) => e._id === empresaData._id ? empresaData : e));
       setDetailEmpresaLive(empresaData);
 
       setCorreoForm({ asunto: "", mensaje: "", adjuntos: [] });
       await Swal.fire({ icon: "success", title: "Correo enviado", timer: 1400, showConfirmButton: false });
       setCorreoContacto(null);
-      setCorreoForm({ asunto: "", mensaje: "", adjuntos: [] });
-
-      // Refresh so fechaUltimoCorreo updates
-      await cargarEmpresas();
-      const updated = await getEmpresas(parqueSeleccionado);
-      const emp = (Array.isArray(updated) ? updated : []).find((e) => e._id === detailEmpresa._id);
-      if (emp) setDetailEmpresaLive(emp);
     } catch {
       Swal.fire({ icon: "error", title: "Error", text: "No se pudo enviar el correo" });
     } finally {
@@ -349,27 +268,6 @@ const handleEnviarCorreo = async () => {
       Swal.fire({ icon: "error", title: "Error", text: "No se pudo cargar el historial" });
     }
   };
-=======
-const cargarCuentas = async () => {
-  try {
-    const data = await getCuentas();
-    setCuentas(data);
-    if (data.length > 0) setCuentaSeleccionada(data[0]._id);
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-const handleVerHistorial = async (empresa) => {
-  try {
-    const { data } = await api.get(`/correo/historial/${empresa._id}`);
-    setHistorial(data);
-    setVerHistorial(empresa);
-  } catch {
-    Swal.fire({ icon: "error", title: "Error", text: "No se pudo cargar el historial" });
-  }
-};
->>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
 
   const cargarEmpresas = useCallback(async () => {
     if (!parqueSeleccionado) return;
@@ -449,7 +347,6 @@ const handleVerHistorial = async (empresa) => {
     }
   };
 
-  // ── Derived data ───────────────────────────────────────────────────────────
   const empresasFiltradas = empresas
     .filter((e) => {
       const q = search.toLowerCase();
@@ -468,19 +365,6 @@ const handleVerHistorial = async (empresa) => {
 
   const parqueActual = parques.find((p) => p._id === parqueSeleccionado);
 
-  // ── Shared close-button style helpers ─────────────────────────────────────
-  const closeBtn = (setter) => (
-    <button
-      onClick={() => setter(null)}
-      style={s.modalCloseBtn}
-      onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-    >
-      <X size={15} />
-    </button>
-  );
-
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Layout>
       <style>{GLOBAL_SELECT_STYLE}</style>
@@ -496,106 +380,74 @@ const handleVerHistorial = async (empresa) => {
               </div>
             )}
           </div>
-          <button
-            onClick={() => setOpen(true)}
-            disabled={!parqueSeleccionado}
+          <button onClick={() => setOpen(true)} disabled={!parqueSeleccionado}
             style={{ ...s.newBtn, opacity: parqueSeleccionado ? 1 : 0.4, cursor: parqueSeleccionado ? "pointer" : "not-allowed" }}
             onMouseEnter={(e) => { if (parqueSeleccionado) e.currentTarget.style.background = "#2e4ee0"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "#3b5bff"; }}
-          >
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#3b5bff"; }}>
             <Plus size={14} />Nueva empresa
           </button>
         </div>
 
-        {/* Filters */}
+        {/* Filtros */}
         <div style={s.filtersRow}>
           <div style={s.selectWrap}>
-            <select
-              value={parqueSeleccionado}
-              onChange={(e) => setParqueSeleccionado(e.target.value)}
+            <select value={parqueSeleccionado} onChange={(e) => setParqueSeleccionado(e.target.value)}
               style={s.selectInput}
               onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; }}
-              onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}
-            >
+              onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}>
               {parques.length === 0 && <option value="">Sin parques</option>}
               {parques.map((p) => (
-                <option key={p._id} value={p._id} style={{ background: "#131720", color: "#e2e8f0" }}>
-                  {p.nombre}
-                </option>
+                <option key={p._id} value={p._id} style={{ background: "#131720", color: "#e2e8f0" }}>{p.nombre}</option>
               ))}
             </select>
             <ChevronIcon />
           </div>
           <div style={s.searchWrap}>
             <SearchIcon />
-            <input
-              type="text"
-              placeholder="Buscar empresa, giro, teléfono..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={s.searchInput}
+            <input type="text" placeholder="Buscar empresa, giro, teléfono..."
+              value={search} onChange={(e) => setSearch(e.target.value)} style={s.searchInput}
               onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; e.target.style.background = "#16192a"; }}
-              onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.background = "#131720"; }}
-            />
+              onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.background = "#131720"; }} />
           </div>
         </div>
 
-        {/* Table */}
+        {/* Tabla */}
         <div style={s.tableWrap}>
           <table style={s.table}>
             <thead>
               <tr>
-                {["#", "Empresa", "Giro", "Dirección", "Teléfono", "Página web", "Contactos", "Acciones"].map((h) =>
+                {["#", "Empresa", "Giro", "Dirección", "Teléfono", "Página web", "Contactos", "Acciones"].map((h) => (
                   h === "Empresa" ? (
                     <th key={h} style={{ ...s.th, cursor: "pointer", userSelect: "none" }} onClick={() => setSortAsc(!sortAsc)}>
                       Empresa {sortAsc ? "↑" : "↓"}
                     </th>
-                  ) : (
-                    <th key={h} style={s.th}>{h}</th>
-                  )
-                )}
+                  ) : <th key={h} style={s.th}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {!parqueSeleccionado ? (
-                <tr>
-                  <td colSpan={8} style={s.empty}>
-                    <Building2 size={28} style={{ margin: "0 auto 8px", display: "block", opacity: 0.2 }} />
-                    Selecciona un parque industrial
-                  </td>
-                </tr>
+                <tr><td colSpan={8} style={s.empty}>
+                  <Building2 size={28} style={{ margin: "0 auto 8px", display: "block", opacity: 0.2 }} />
+                  Selecciona un parque industrial
+                </td></tr>
               ) : empresasFiltradas.length === 0 ? (
-                <tr>
-                  <td colSpan={8} style={s.empty}>
-                    <Building2 size={28} style={{ margin: "0 auto 8px", display: "block", opacity: 0.2 }} />
-                    Sin empresas en este parque
-                  </td>
-                </tr>
+                <tr><td colSpan={8} style={s.empty}>
+                  <Building2 size={28} style={{ margin: "0 auto 8px", display: "block", opacity: 0.2 }} />
+                  Sin empresas en este parque
+                </td></tr>
               ) : (
                 empresasFiltradas.map((empresa) => (
-<<<<<<< HEAD
                   <tr key={empresa._id} style={{ transition: "background 0.1s" }}
                     onMouseEnter={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)"); }}
                     onMouseLeave={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "transparent"); }}>
-=======
-                  <tr
-                    key={empresa._id}
-                    style={{ transition: "background 0.1s" }}
-                    onMouseEnter={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)"); } }
-                    onMouseLeave={(e) => { [...e.currentTarget.children].forEach(td => td.style.background = "transparent"); } }
-                  >
->>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
                     <td style={{ ...s.td, color: "rgba(255,255,255,0.18)", fontSize: 11, width: 40 }}>{empresa.numero || "—"}</td>
                     <td style={s.td}>
                       <div style={s.companyName}>{empresa.empresa}</div>
                       {empresa.paginaWeb && (
-                        <div style={s.companyDomain}>
-                          {empresa.paginaWeb.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                        </div>
+                        <div style={s.companyDomain}>{empresa.paginaWeb.replace(/^https?:\/\//, "").replace(/\/$/, "")}</div>
                       )}
                     </td>
-
-                    {/* Giro */}
                     <td style={s.td}>
                       {empresa.giroEmpresa ? (
                         <span style={{
@@ -606,12 +458,8 @@ const handleVerHistorial = async (empresa) => {
                         }}>
                           {empresa.giroEmpresa.length > 28 ? empresa.giroEmpresa.slice(0, 28) + "…" : empresa.giroEmpresa}
                         </span>
-                      ) : (
-                        <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>
-                      )}
+                      ) : <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
                     </td>
-
-                    {/* Dirección */}
                     <td style={{ ...s.td, maxWidth: 160 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }} title={empresa.direccion}>
@@ -619,41 +467,41 @@ const handleVerHistorial = async (empresa) => {
                         </div>
                         {empresa.direccion && (
                           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(empresa.direccion)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Ver en Google Maps"
+                            target="_blank" rel="noopener noreferrer" title="Ver en Google Maps"
                             style={{ color: "#60a5fa", flexShrink: 0, display: "flex", alignItems: "center" }}>
                             <MapPin size={12} />
                           </a>
                         )}
-                    </div>
-                  </td><td style={{ ...s.td, whiteSpace: "nowrap" }}>
+                      </div>
+                    </td>
+                    <td style={{ ...s.td, whiteSpace: "nowrap" }}>
                       {empresa.telefono || <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
-                    </td><td style={s.td}>
+                    </td>
+                    <td style={s.td}>
                       {empresa.paginaWeb ? (
                         <a href={empresa.paginaWeb} target="_blank" rel="noopener noreferrer"
                           style={{ color: "#60a5fa", fontSize: 11, display: "flex", alignItems: "center", gap: 4, textDecoration: "none" }}>
                           <ExternalLink size={11} />Ver sitio
                         </a>
                       ) : <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
-                    </td><td style={s.td}>
+                    </td>
+                    <td style={s.td}>
                       {empresa.contactos?.length > 0 ? (
-                        <button
-                          onClick={() => setDetailEmpresa(empresa)}
+                        <button onClick={() => setDetailEmpresa(empresa)}
                           style={{
                             background: "rgba(52,211,153,0.08)", border: "1px solid rgba(52,211,153,0.18)",
                             color: "#34d399", fontSize: 11, fontWeight: 500,
                             cursor: "pointer", padding: "3px 9px", borderRadius: 6, fontFamily: "inherit",
                             display: "flex", alignItems: "center", gap: 4, transition: "background 0.15s",
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(52,211,153,0.14)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(52,211,153,0.08)"; }}
-                        >
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(52,211,153,0.14)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(52,211,153,0.08)"}>
                           <Users size={10} />
                           {empresa.contactos.length} {empresa.contactos.length === 1 ? "contacto" : "contactos"}
                         </button>
                       ) : <span style={{ color: "rgba(255,255,255,0.13)", fontSize: 12 }}>—</span>}
-                    </td><td style={s.td}>
+                    </td>
+                    <td style={s.td}>
                       <div style={{ display: "flex", gap: 5 }}>
                         <button onClick={() => handleVerHistorial(empresa)} style={{ ...s.actBtn("hist"), color: "#34d399" }}
                           onMouseEnter={(e) => e.currentTarget.style.background = "rgba(52,211,153,0.1)"}
@@ -672,35 +520,6 @@ const handleVerHistorial = async (empresa) => {
                         </button>
                       </div>
                     </td>
-<<<<<<< HEAD
-                    <td style={s.td}>
-                      <div style={{ display: "flex", gap: 5 }}>
-                        <button onClick={() => handleVerHistorial(empresa)}
-                          style={{ ...s.actBtn("hist"), color: "#34d399" }}
-                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(52,211,153,0.1)"}
-                          onMouseLeave={(e) => e.currentTarget.style.background = "transparent"} title="Historial">
-                          <Clock size={12} />
-                        </button>
-                        <button
-                          onClick={() => setEditingEmpresa(empresa)}
-                          style={s.actBtn("edit")}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(251,191,36,0.1)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                          title="Editar"
-                        >
-                          <Pencil size={12} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(empresa._id)}
-                          style={s.actBtn("delete")}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(248,113,113,0.1)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                          title="Eliminar"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))
               )}
@@ -715,7 +534,7 @@ const handleVerHistorial = async (empresa) => {
         )}
       </div>
 
-      {/* ── Modal: Crear ─────────────────────────────────────────────────────── */}
+      {/* Modal Crear */}
       <AnimatePresence>
         {open && (
           <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)}>
@@ -727,10 +546,8 @@ const handleVerHistorial = async (empresa) => {
                   <div style={s.modalSubtitle}>Completa los datos de la empresa</div>
                 </div>
                 <button onClick={() => setOpen(false)} style={s.modalCloseBtn}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
-                  <X size={15} />
-                </button>
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
               </div>
               <EmpresaForm parqueIndustrialId={parqueSeleccionado} onSubmit={handleCreate} onCancel={() => setOpen(false)} />
             </motion.div>
@@ -738,7 +555,7 @@ const handleVerHistorial = async (empresa) => {
         )}
       </AnimatePresence>
 
-      {/* ── Modal: Editar ────────────────────────────────────────────────────── */}
+      {/* Modal Editar */}
       <AnimatePresence>
         {editingEmpresa && (
           <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setEditingEmpresa(null)}>
@@ -750,10 +567,8 @@ const handleVerHistorial = async (empresa) => {
                   <div style={s.modalSubtitle}>{editingEmpresa.empresa}</div>
                 </div>
                 <button onClick={() => setEditingEmpresa(null)} style={s.modalCloseBtn}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
-                  <X size={15} />
-                </button>
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
               </div>
               <EmpresaForm initialData={editingEmpresa} parqueIndustrialId={parqueSeleccionado} onSubmit={handleUpdate} onCancel={() => setEditingEmpresa(null)} />
             </motion.div>
@@ -761,7 +576,7 @@ const handleVerHistorial = async (empresa) => {
         )}
       </AnimatePresence>
 
-      {/* ── Modal: Contactos ─────────────────────────────────────────────────── */}
+      {/* Modal Contactos */}
       <AnimatePresence>
         {detailEmpresaLive && (
           <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDetailEmpresa(null)}>
@@ -773,12 +588,9 @@ const handleVerHistorial = async (empresa) => {
                   <div style={s.modalSubtitle}>{detailEmpresaLive.empresa}</div>
                 </div>
                 <button onClick={() => setDetailEmpresa(null)} style={s.modalCloseBtn}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
-                  <X size={15} />
-                </button>
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
               </div>
-
               <div>
                 {detailEmpresaLive.contactos.map((c, i) => (
                   <div key={i} style={s.contactCard}>
@@ -789,7 +601,7 @@ const handleVerHistorial = async (empresa) => {
                         display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 12, fontWeight: 600, color: "#818cf8", flexShrink: 0,
                       }}>
-                        {c.nombre ? c.nombre.trim().split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() : "?"}
+                        {c.nombre ? c.nombre.trim().split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase() : "?"}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>
@@ -807,35 +619,39 @@ const handleVerHistorial = async (empresa) => {
                             color: "#818cf8", fontSize: 11, fontWeight: 500,
                             cursor: "pointer", fontFamily: "inherit",
                           }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59,91,255,0.18)"; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(59,91,255,0.1)"; }}
-                        >
+                          onMouseEnter={(e) => e.currentTarget.style.background = "rgba(59,91,255,0.18)"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "rgba(59,91,255,0.1)"}>
                           <Mail size={11} /> Enviar correo
                         </button>
                       )}
                     </div>
 
-<<<<<<< HEAD
-                    {/* Datos del contacto */}
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 16px", marginBottom: 8 }}>
-                      {[
-                        { label: "Correo", value: c.correo ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a> : null },
-                        { label: "Teléfono", value: c.telefono },
-                      ].map(({ label, value }) => (
-                        <div key={label}>
-                          <div style={s.contactLabel}>{label}</div>
-                          <div style={s.contactValue}>{value || <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}</div>
+                      <div>
+                        <div style={s.contactLabel}>Correo</div>
+                        <div style={s.contactValue}>
+                          {c.correo
+                            ? <a href={`mailto:${c.correo}`} style={{ color: "#60a5fa", textDecoration: "none", fontSize: 12 }}>{c.correo}</a>
+                            : <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={s.contactLabel}>Teléfono</div>
+                        <div style={s.contactValue}>{c.telefono || <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 12 }}>—</span>}</div>
+                      </div>
+                      {c.telefonos?.filter(t => t.numero).map((tel, i) => (
+                        <div key={i}>
+                          <div style={s.contactLabel}>{tel.tipo || `Teléfono ${i + 1}`}</div>
+                          <div style={s.contactValue}>{tel.numero}</div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Último correo enviado */}
                     <div style={{ marginBottom: c.nota ? 8 : 0 }}>
                       <div style={s.contactLabel}>Último correo enviado</div>
                       <UltimoCorreoBadge fecha={c.fechaUltimoCorreo} />
                     </div>
 
-                    {/* Nota del contacto */}
                     {c.nota && (
                       <div style={{
                         marginTop: 8, padding: "8px 10px", borderRadius: 7,
@@ -847,113 +663,6 @@ const handleVerHistorial = async (empresa) => {
                         <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", lineHeight: 1.5 }}>{c.nota}</div>
                       </div>
                     )}
-=======
-{/* Modal Enviar Correo */}
-<AnimatePresence>
-  {correoContacto && (
-    <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setCorreoContacto(null)}>
-      <motion.div style={{ ...s.modalBox, maxWidth: 480 }} variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-        transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={(e) => e.stopPropagation()}>
-        <div style={s.modalHeader}>
-          <div>
-            <div style={s.modalTitle}>Enviar correo</div>
-            <div style={s.modalSubtitle}>Para: {correoContacto.correo}</div>
-          </div>
-          <button onClick={() => setCorreoContacto(null)} style={s.modalCloseBtn}
-            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
-            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
-            <X size={15} />
-          </button>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
-            <div style={s.contactLabel}>Remitente</div>
-            <select
-              value={cuentaSeleccionada}
-              onChange={(e) => setCuentaSeleccionada(e.target.value)}
-              style={{
-                width: "100%", height: 36, marginTop: 6,
-                background: "#131720", border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 8, color: "#e2e8f0", fontSize: 13,
-                padding: "0 12px", outline: "none", fontFamily: "inherit",
-                boxSizing: "border-box",
-              }}
-            >
-              {cuentas.length === 0 && <option value="">Sin cuentas configuradas</option>}
-              {cuentas.map((c) => (
-                <option key={c._id} value={c._id}>{c.nombre} — {c.email}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <div style={s.contactLabel}>Asunto</div>
-            <input
-              type="text"
-              placeholder="Asunto del correo"
-              value={correoForm.asunto}
-              onChange={(e) => setCorreoForm({ ...correoForm, asunto: e.target.value })}
-              style={{ ...s.searchInput, padding: "0 12px", width: "100%", boxSizing: "border-box", marginTop: 6 }}
-              onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
-              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-            />
-          </div>
-          <div>
-            <div style={s.contactLabel}>Mensaje</div>
-            <textarea
-              placeholder="Escribe tu mensaje aquí..."
-              value={correoForm.mensaje}
-              onChange={(e) => setCorreoForm({ ...correoForm, mensaje: e.target.value })}
-              rows={6}
-              style={{
-                width: "100%", marginTop: 6, padding: "10px 12px",
-                background: "#131720", border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 8, color: "#e2e8f0", fontSize: 13,
-                fontFamily: "inherit", resize: "vertical", boxSizing: "border-box",
-                outline: "none",
-              }}
-              onFocus={(e) => e.target.style.borderColor = "rgba(99,130,246,0.5)"}
-              onBlur={(e) => e.target.style.borderColor = "rgba(255,255,255,0.1)"}
-            />
-          </div>
-          <div>
-            <div style={s.contactLabel}>Adjuntos</div>
-            <label style={{
-              display: "flex", alignItems: "center", gap: 8, marginTop: 6,
-              padding: "8px 12px", borderRadius: 8, cursor: "pointer",
-              border: "1px dashed rgba(255,255,255,0.15)",
-              background: "rgba(255,255,255,0.02)", color: "rgba(255,255,255,0.4)",
-              fontSize: 12, transition: "border-color 0.15s",
-            }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(99,130,246,0.4)"}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"}
-            >
-              <Paperclip size={13} />
-              Seleccionar archivos
-              <input
-                type="file"
-                multiple
-                style={{ display: "none" }}
-                onChange={(e) => setCorreoForm({ ...correoForm, adjuntos: [...correoForm.adjuntos, ...Array.from(e.target.files)] })}
-              />
-            </label>
-            {correoForm.adjuntos.length > 0 && (
-              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
-                {correoForm.adjuntos.map((file, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", justifyContent: "space-between",
-                    padding: "5px 10px", borderRadius: 6,
-                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)",
-                  }}>
-                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {file.name}
-                    </span>
-                    <button
-                      onClick={() => setCorreoForm({ ...correoForm, adjuntos: correoForm.adjuntos.filter((_, j) => j !== i) })}
-                      style={{ background: "none", border: "none", color: "#f87171", cursor: "pointer", padding: "0 4px", fontSize: 14, lineHeight: 1 }}
-                    >
-                      ×
-                    </button>
->>>>>>> d1815cb (feat: cuentas de correo configurables, login por usuario, filtros de reportes, botón Maps y selector de exportación)
                   </div>
                 ))}
               </div>
@@ -978,6 +687,21 @@ const handleVerHistorial = async (empresa) => {
                   onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <div style={s.contactLabel}>Remitente</div>
+                  <select value={cuentaSeleccionada} onChange={(e) => setCuentaSeleccionada(e.target.value)}
+                    style={{
+                      width: "100%", height: 36, marginTop: 6,
+                      background: "#131720", border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 8, color: "#e2e8f0", fontSize: 13,
+                      padding: "0 12px", outline: "none", fontFamily: "inherit", boxSizing: "border-box",
+                    }}>
+                    {cuentas.length === 0 && <option value="">Sin cuentas configuradas</option>}
+                    {cuentas.map((c) => (
+                      <option key={c._id} value={c._id}>{c.nombre} — {c.email}</option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <div style={s.contactLabel}>Asunto</div>
                   <input type="text" placeholder="Asunto del correo"
@@ -1041,8 +765,7 @@ const handleVerHistorial = async (empresa) => {
                     cursor: enviandoCorreo ? "not-allowed" : "pointer",
                     fontFamily: "inherit", display: "flex", alignItems: "center",
                     justifyContent: "center", gap: 6, transition: "background 0.15s",
-                  }}
-                >
+                  }}>
                   <Mail size={14} />
                   {enviandoCorreo ? "Enviando..." : "Enviar correo"}
                 </button>
@@ -1052,7 +775,7 @@ const handleVerHistorial = async (empresa) => {
         )}
       </AnimatePresence>
 
-      {/* ── Modal: Historial ─────────────────────────────────────────────────── */}
+      {/* Modal Historial */}
       <AnimatePresence>
         {verHistorial && (
           <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setVerHistorial(false)}>
@@ -1064,12 +787,9 @@ const handleVerHistorial = async (empresa) => {
                   <div style={s.modalSubtitle}>{verHistorial.empresa}</div>
                 </div>
                 <button onClick={() => setVerHistorial(false)} style={s.modalCloseBtn}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.09)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}>
-                  <X size={15} />
-                </button>
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
               </div>
-
               <div>
                 {historial.length === 0 ? (
                   <div style={s.empty}>Sin correos enviados aún</div>
@@ -1079,9 +799,7 @@ const handleVerHistorial = async (empresa) => {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
                         <div style={{ fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.85)" }}>{h.asunto}</div>
                         <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", whiteSpace: "nowrap", marginLeft: 10 }}>
-                          {new Date(h.createdAt).toLocaleDateString("es-MX", {
-                            day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-                          })}
+                          {new Date(h.createdAt).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                         </div>
                       </div>
                       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>

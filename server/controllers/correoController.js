@@ -11,25 +11,35 @@ export const enviarCorreo = async (req, res) => {
     let remitenteNombre;
 
     if (cuentaId) {
-  const cuenta = await CuentaCorreo.findById(cuentaId);
-  if (!cuenta) return res.status(404).json({ message: "Cuenta de correo no encontrada" });
-  
-  const transportConfig = cuenta.smtpHost
-    ? {
-        host: cuenta.smtpHost,
-        port: cuenta.smtpPort || 587,
-        secure: false,
-        auth: { user: cuenta.email, pass: cuenta.password },
-        tls: { ciphers: "SSLv3" },
-      }
-    : {
-        service: cuenta.servicio,
-        auth: { user: cuenta.email, pass: cuenta.password },
-      };
+      const cuenta = await CuentaCorreo.findById(cuentaId);
+      if (!cuenta) return res.status(404).json({ message: "Cuenta de correo no encontrada" });
+
+      const transportConfig = cuenta.smtpHost
+        ? {
+            host: cuenta.smtpHost,
+            port: cuenta.smtpPort || 587,
+            secure: false,
+            auth: { user: cuenta.email, pass: cuenta.password },
+            tls: { ciphers: "SSLv3" },
+          }
+        : {
+            service: cuenta.servicio,
+            auth: { user: cuenta.email, pass: cuenta.password },
+          };
 
       transporter = nodemailer.createTransport(transportConfig);
       remitenteEmail = cuenta.email;
       remitenteNombre = cuenta.nombre;
+    } else {
+      transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.MAIL_USER,
+          pass: process.env.MAIL_PASS,
+        },
+      });
+      remitenteEmail = process.env.MAIL_USER;
+      remitenteNombre = "DEMATIQ CRM";
     }
 
     const adjuntos = req.files?.map((file) => ({
@@ -38,32 +48,8 @@ export const enviarCorreo = async (req, res) => {
       contentType: file.mimetype,
     })) || [];
 
-    const cuenta = await CuentaCorreo.findOne({
-  activa: true,
-});
-
-if (!cuenta) {
-  return res.status(400).json({
-    message:
-      "No hay una cuenta de correo configurada",
-  });
-}
-
-const transporter =
-  nodemailer.createTransport({
-    service:
-      cuenta.servicio,
-    auth: {
-      user: cuenta.email,
-      pass: cuenta.password,
-    },
-  });
-
-const remitenteEmail =
-  cuenta.email;
-
     await transporter.sendMail({
-      from: `"DEMATIQ CRM" <${process.env.MAIL_USER}>`,
+      from: `"${remitenteNombre}" <${remitenteEmail}>`,
       to: destinatario,
       subject: asunto,
       attachments: adjuntos,

@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 
+
 import { connectDB } from "./config/database.js";
 import parqueRoutes from "./routes/parqueRoutes.js";
 import empresaRoutes from "./routes/empresaRoutes.js";
@@ -35,6 +36,7 @@ app.use("/api/correo",         correoRoutes);
 app.use("/api/cuentas-correo", cuentaCorreoRoutes); // ← agregar
 app.use("/api/system",         systemRoutes);        // ← agregar
 app.use("/api",                exportRoutes);
+
 
 app.get("/", (req, res) => {
   res.json({ mensaje: "API funcionando" });
