@@ -177,7 +177,7 @@ function StyledSelect({ value, onChange, children, disabled }) {
 }
 
 // ─── Panel de filtros de exportación ─────────────────────────────────────────
-function ExportFilterPanel({ exporting, onExport }) {
+function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {  
   const [filtros, setFiltros]     = useState({ estados: [], parques: [], empresas: [] });
   const [loadingF, setLoadingF]   = useState(true);
   const [tipoFiltro, setTipoFiltro] = useState("todo");   // todo | estado | parque | empresa
@@ -666,6 +666,28 @@ useEffect(() => {
               label={`Respaldo JSON — ${tablaExport}`}
               hoverBorder="hover:border-blue-500" spinColor="text-blue-400"
               exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
+
+            {/* Tamaño de la BD */}
+            <div className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-800 border border-slate-700">
+              <div className="flex items-center gap-3">
+                <Database size={20} className="text-green-400" />
+                <span className="text-sm font-medium">Tamaño de la base de datos</span>
+              </div>
+              {dbStatsLoading ? (
+                <span className="flex items-center gap-2 text-slate-400 text-xs">
+                  <Loader2 size={12} className="animate-spin" /> Calculando…
+                </span>
+              ) : dbStats ? (
+                <span className="text-xs bg-blue-900/30 border border-blue-700/50 text-blue-300 px-3 py-1.5 rounded-full font-semibold">
+                  {formatBytes(dbStats.totalSize ?? dbStats.dataSize)}
+                </span>
+              ) : (
+                <span className="text-xs bg-red-900/30 border border-red-700/50 text-red-400 px-3 py-1.5 rounded-full font-medium">
+                  No disponible
+                </span>
+              )}
+            </div>
+
               {/* Volver a bloquear */}
               <button
                 onClick={() => setSistemaDesbloqueado(false)}
@@ -867,23 +889,7 @@ useEffect(() => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            {dbStatsLoading ? (
-              <span className="flex items-center gap-2 text-slate-400 text-xs px-3 py-1">
-                <Loader2 size={12} className="animate-spin" /> Calculando peso…
-              </span>
-            ) : dbStats ? (
-              <span
-                className="text-xs bg-blue-900/30 border border-blue-700/50 text-blue-300 px-3 py-1 rounded-full font-medium"
-                title="Tamaño de datos + índices"
-              >
-                Peso: {formatBytes(dbStats.totalSize ?? dbStats.dataSize)}
-              </span>
-            ) : (
-              <span className="text-xs bg-red-900/30 border border-red-700/50 text-red-400 px-3 py-1 rounded-full font-medium">
-                Peso no disponible
-              </span>
-            )}
+         <div className="flex items-center gap-2">
             <span className="text-xs bg-green-900/30 border border-green-700/50 text-green-400 px-3 py-1 rounded-full font-medium">
               Activa
             </span>

@@ -8,6 +8,7 @@ import {
   getEmpresasEstado,
   getEmpresasByParque,
   getUltimosCorreos,
+  getProveedoresPorEstado,
 } from "../services/reporteService";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell,
@@ -281,18 +282,52 @@ export default function Reportes() {
   const [chartTab, setChartTab] = useState("estado");
   const [parqueSel, setParqueSel] = useState("todos");
   const [ultimosCorreos, setUltimosCorreos] = useState([]);
+  const [proveedoresEstado, setProveedoresEstado] = useState([]);
+  const [filtroCorreo, setFiltroCorreo] = useState("todos"); // "todos" | "semana" | "mes" 
 
   useEffect(() => { cargarDatos(); }, []);
 
+  const calcularFechasFiltro = (tipo) => {
+    const hoy = new Date();
+    const fmt = (d) => d.toISOString().split("T")[0];
+    if (tipo === "semana") {
+      const lunes = new Date(hoy);
+      lunes.setDate(hoy.getDate() - hoy.getDay() + 1);
+      return { desde: fmt(lunes), hasta: fmt(hoy) };
+    }
+    if (tipo === "mes") {
+      return { desde: fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: fmt(hoy) };
+    }
+    return { desde: null, hasta: null };
+  };
+
+  const aplicarFiltroCorreo = async (tipo, desde = "", hasta = "") => {
+    setFiltroCorreo(tipo);
+    try {
+      if (tipo === "rango") {
+        const correosData = await getUltimosCorreos(desde || null, hasta || null);
+        setUltimosCorreos(correosData);
+      } else if (tipo === "todos") {
+        const correosData = await getUltimosCorreos();
+        setUltimosCorreos(correosData);
+      } else {
+        const { desde: d, hasta: h } = calcularFechasFiltro(tipo);
+        const correosData = await getUltimosCorreos(d, h);
+        setUltimosCorreos(correosData);
+      }
+    } catch (error) { console.error(error); }
+  };
+
   const cargarDatos = async () => {
   try {
-    const [resumenData, empresasData, parquesData, estadosData, parqueData, correosData] = await Promise.all([
+    const [resumenData, empresasData, parquesData, estadosData, parqueData, correosData, provEstadoData] = await Promise.all([
       getResumen(),
       getEmpresasIncompletas(),
       getParquesIncompletos(),
       getEmpresasEstado(),
       getEmpresasByParque(),
       getUltimosCorreos(),
+      getProveedoresPorEstado(),
     ]);
     setResumen(resumenData);
     setEmpresasIncompletas(empresasData);
@@ -300,6 +335,7 @@ export default function Reportes() {
     setEmpresasEstado(estadosData);
     setEmpresasByParque(parqueData);
     setUltimosCorreos(correosData);
+    setProveedoresEstado(provEstadoData);
   } catch (error) { console.error(error); }
 };
 
@@ -363,6 +399,51 @@ const totalIncompletos = parqueSel === "todos"
             <GraficaPorParque data={empresasByParque} />
           )}
         </Collapsible>
+        
+
+        {/* Proveedores por estado */}
+        <Collapsible title="Proveedores por estado" defaultOpen={false}>
+          {proveedoresEstado.length === 0 ? (
+            <div style={{ padding: "32px 0", textAlign: "center", color: "rgba(255,255,255,0.15)", fontSize: 12 }}>
+              Sin datos de proveedores
+            </div>
+          ) : (
+            <div style={{ width: "100%", height: Math.max(220, proveedoresEstado.length * 40) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={proveedoresEstado}
+                  layout="vertical"
+                  margin={{ top: 0, right: 40, left: 4, bottom: 0 }}
+                  barCategoryGap="30%"
+                >
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis
+                    type="number"
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.28)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="estado"
+                    width={120}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.45)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => v.length > 18 ? v.slice(0, 17) + "…" : v}
+                  />
+                  <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                  <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                    {proveedoresEstado.map((_, i) => (
+                      <Cell key={i} fill="#818cf8" />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </Collapsible>
 
         {/* Incompletos */}
         {/* Gráfica datos incompletos */}
@@ -415,13 +496,31 @@ const totalIncompletos = parqueSel === "todos"
           navigate={navigate}
           parqueSel={parqueSel}
           setParqueSel={setParqueSel}
-        />
-        </Collapsible>
+        />        
+      
         {/* Historial de contactos */}
+        </Collapsible>
         <Collapsible title="Últimos correos enviados" badge={ultimosCorreos.length} defaultOpen={false}>
+          {/* Filtros de fecha */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
+            {["todos", "semana", "mes"].map((tipo) => (
+              <button key={tipo} onClick={() => aplicarFiltroCorreo(tipo)}
+                style={{
+                  padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 500,
+                  cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
+                  background: filtroCorreo === tipo ? "rgba(99,130,246,0.18)" : "rgba(255,255,255,0.04)",
+                  color: filtroCorreo === tipo ? "#818cf8" : "rgba(255,255,255,0.35)",
+                  border: filtroCorreo === tipo ? "1px solid rgba(99,130,246,0.35)" : "1px solid rgba(255,255,255,0.07)",
+                }}
+              >
+                {{ todos: "Todos", semana: "Esta semana", mes: "Este mes", rango: "Rango" }[tipo]}
+              </button>
+            ))}
+          </div>
+
           {ultimosCorreos.length === 0 ? (
             <div style={{ padding: "24px 0", textAlign: "center", color: "rgba(255,255,255,0.15)", fontSize: 12 }}>
-              Sin correos enviados aún
+              Sin correos en este período
             </div>
           ) : (
             <table style={s.table}>

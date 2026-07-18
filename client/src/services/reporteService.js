@@ -10,8 +10,24 @@ export const getResumen =
     return res.data;
   };
 
-export const getUltimosCorreos = async () => {
-  const res = await api.get("/correo/historial-global");
+export const getProveedoresPorEstado = async () => {
+  const res = await api.get("/proveedores");
+  const proveedores = res.data;
+  const conteo = {};
+  for (const p of proveedores) {
+    const estado = p.estado?.trim() || "Sin estado";
+    conteo[estado] = (conteo[estado] || 0) + 1;
+  }
+  return Object.entries(conteo)
+    .map(([estado, total]) => ({ estado, total }))
+    .sort((a, b) => b.total - a.total);
+};
+
+export const getUltimosCorreos = async (desde = null, hasta = null) => {
+  const params = {};
+  if (desde) params.desde = desde;
+  if (hasta) params.hasta = hasta;
+  const res = await api.get("/correo/historial-global", { params });
   return res.data;
 };
 

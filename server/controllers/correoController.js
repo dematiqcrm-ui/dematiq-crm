@@ -100,11 +100,24 @@ export const getHistorial = async (req, res) => {
 
 export const getHistorialGlobal = async (req, res) => {
   try {
-    const historial = await Historial.find()
+    const { desde, hasta } = req.query;
+    const filtro = {};
+
+    if (desde || hasta) {
+      filtro.createdAt = {};
+      if (desde) filtro.createdAt.$gte = new Date(desde);
+      if (hasta) {
+        const hastaFin = new Date(hasta);
+        hastaFin.setHours(23, 59, 59, 999);
+        filtro.createdAt.$lte = hastaFin;
+      }
+    }
+
+    const historial = await Historial.find(filtro)
       .populate("enviadoPor", "nombre")
       .populate("empresaId", "empresa")
       .sort({ createdAt: -1 })
-      .limit(20);
+      .limit(filtro.createdAt ? 200 : 20);
     res.json(historial);
   } catch (error) {
     res.status(500).json({ message: error.message });

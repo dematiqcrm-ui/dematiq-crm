@@ -14,6 +14,34 @@ import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// ─── Helpers de filtrado ───────────────────────────────────────────────────────
+const filtrarEmpresas = async (tipo, valor) => {
+  if (tipo === "todo" || !valor) {
+    return await Empresa.find().lean();
+  }
+  if (tipo === "estado") {
+    return await Empresa.find({ estado: valor }).lean();
+  }
+  if (tipo === "parque") {
+    return await Empresa.find({ parqueIndustrialId: valor }).lean();
+  }
+  if (tipo === "empresa") {
+    return await Empresa.find({ _id: valor }).lean();
+  }
+  return await Empresa.find().lean();
+};
+
+const filtrarParques = async (tipo, valor, empresas) => {
+  if (tipo === "parque" && valor) {
+    return await ParqueIndustrial.find({ _id: valor }).lean();
+  }
+  if (tipo === "todo" || !valor) {
+    return await ParqueIndustrial.find().lean();
+  }
+  // Para estado o empresa: solo los parques que tienen empresas en el resultado
+  const parqueIds = [...new Set(empresas.map((e) => String(e.parqueIndustrialId)))];
+  return await ParqueIndustrial.find({ _id: { $in: parqueIds } }).lean();
+};
 // ─── Health check ─────────────────────────────────────────────────────────────
 router.get("/health", (req, res) => {
   res.json({ status: "ok" });

@@ -35,7 +35,7 @@ const empresaSchema = new mongoose.Schema(
     parqueIndustrialId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ParqueIndustrial",
-      required: true,
+      required: false,
     },
 
     numero: String,
@@ -51,6 +51,8 @@ const empresaSchema = new mongoose.Schema(
 
     telefono: String,
 
+    telefonosExtra: { type: [telefonoSchema], default: [] },
+
     paginaWeb: String,
 
     notas: String,
@@ -60,6 +62,12 @@ const empresaSchema = new mongoose.Schema(
     municipio: String,
 
     contactos: [contactoSchema],
+
+    tipo: {
+      type: String,
+      enum: ["empresa", "proveedor"],
+      default: "empresa",
+    },
   },
   {
     timestamps: true,

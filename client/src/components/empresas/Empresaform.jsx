@@ -24,7 +24,7 @@ export default function EmpresaForm({
     giroEmpresa: "",
     direccion: "",
     telefono: "",
-    telefono2: "",
+    telefonosExtra: [],
     paginaWeb: "",
     notas: "",
     contactos: [{ ...CAMPO_CONTACTO_VACIO }],
@@ -40,6 +40,7 @@ export default function EmpresaForm({
         giroEmpresa: initialData.giroEmpresa || "",
         direccion:   initialData.direccion   || "",
         telefono:    initialData.telefono    || "",
+        telefonosExtra: initialData.telefonosExtra?.length > 0 ? initialData.telefonosExtra : [],
         paginaWeb:   initialData.paginaWeb   || "",
         notas:       initialData.notas       || "",
         contactos: initialData.contactos?.length > 0
@@ -60,6 +61,30 @@ export default function EmpresaForm({
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // ── Teléfonos extra de la empresa ──
+  const handleTelefonoExtraChange = (telIndex, e) => {
+    const { name, value } = e.target;
+    setForm((prev) => {
+      const telefonosExtra = [...prev.telefonosExtra];
+      telefonosExtra[telIndex] = { ...telefonosExtra[telIndex], [name]: value };
+      return { ...prev, telefonosExtra };
+    });
+  };
+
+  const agregarTelefonoExtra = () => {
+    setForm((prev) => ({
+      ...prev,
+      telefonosExtra: [...prev.telefonosExtra, { ...TELEFONO_VACIO }],
+    }));
+  };
+
+  const eliminarTelefonoExtra = (telIndex) => {
+    setForm((prev) => ({
+      ...prev,
+      telefonosExtra: prev.telefonosExtra.filter((_, i) => i !== telIndex),
+    }));
   };
 
   const handleContactoChange = (index, e) => {
@@ -124,6 +149,7 @@ export default function EmpresaForm({
     e.preventDefault();
     const payload = {
       ...form,
+      telefonosExtra: form.telefonosExtra.filter((t) => t.numero.trim() !== ""),
       contactos: form.contactos
         .map((c) => ({
           ...c,
@@ -294,6 +320,47 @@ export default function EmpresaForm({
             <input type="text" name="telefono" placeholder="442 123 4567"
               value={form.telefono} onChange={handleChange} className="ef-input" />
           </div>
+        </div>
+
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+            <label className="ef-label" style={{ marginBottom: 0 }}>Teléfonos adicionales</label>
+            <button type="button" onClick={agregarTelefonoExtra} className="ef-add-tel-btn">
+              <span style={{ fontSize: 13, lineHeight: 1 }}>+</span> Agregar teléfono
+            </button>
+          </div>
+          {form.telefonosExtra.length > 0 && (
+            <div className="ef-tel-list">
+              {form.telefonosExtra.map((tel, telIndex) => (
+                <div key={telIndex} className="ef-tel-row">
+                  <input
+                    type="text"
+                    name="tipo"
+                    placeholder="Fijo, Celular..."
+                    value={tel.tipo}
+                    onChange={(e) => handleTelefonoExtraChange(telIndex, e)}
+                    className="ef-input ef-tel-input"
+                  />
+                  <input
+                    type="text"
+                    name="numero"
+                    placeholder="442 123 4567"
+                    value={tel.numero}
+                    onChange={(e) => handleTelefonoExtraChange(telIndex, e)}
+                    className="ef-input ef-tel-input"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => eliminarTelefonoExtra(telIndex)}
+                    className="ef-tel-remove"
+                    title="Eliminar teléfono"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

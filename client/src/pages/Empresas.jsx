@@ -165,6 +165,7 @@ export default function Empresas() {
   const [open, setOpen]                     = useState(false);
   const [editingEmpresa, setEditingEmpresa] = useState(null);
   const [detailEmpresa, setDetailEmpresa]   = useState(null);
+  const [telefonosEmpresa, setTelefonosEmpresa] = useState(null);  
   const [sortAsc, setSortAsc]               = useState(true);
   const [cuentas, setCuentas]               = useState([]);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState("");
@@ -354,7 +355,8 @@ export default function Empresas() {
         e.empresa?.toLowerCase().includes(q) ||
         e.giroEmpresa?.toLowerCase().includes(q) ||
         e.numero?.toLowerCase().includes(q) ||
-        e.telefono?.toLowerCase().includes(q)
+        e.telefono?.toLowerCase().includes(q) ||
+        e.telefonosExtra?.some((t) => t.numero?.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
@@ -475,7 +477,25 @@ export default function Empresas() {
                       </div>
                     </td>
                     <td style={{ ...s.td, whiteSpace: "nowrap" }}>
-                      {empresa.telefono || <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <span>{empresa.telefono || <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}</span>
+                        {empresa.telefonosExtra?.length > 0 && (
+                          <button
+                            onClick={() => setTelefonosEmpresa(empresa)}
+                            title="Ver todos los teléfonos"
+                            style={{
+                              fontSize: 10, fontWeight: 600, color: "#818cf8",
+                              background: "rgba(99,130,246,0.12)", border: "1px solid rgba(99,130,246,0.2)",
+                              borderRadius: 20, padding: "1px 6px", cursor: "pointer", fontFamily: "inherit",
+                              transition: "background 0.15s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "rgba(99,130,246,0.22)"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "rgba(99,130,246,0.12)"}
+                          >
+                            +{empresa.telefonosExtra.length}
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td style={s.td}>
                       {empresa.paginaWeb ? (
@@ -571,6 +591,56 @@ export default function Empresas() {
                   onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
               </div>
               <EmpresaForm initialData={editingEmpresa} parqueIndustrialId={parqueSeleccionado} onSubmit={handleUpdate} onCancel={() => setEditingEmpresa(null)} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal Teléfonos de la empresa */}
+      <AnimatePresence>
+        {telefonosEmpresa && (
+          <motion.div style={s.modalBackdrop} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setTelefonosEmpresa(null)}>
+            <motion.div style={{ ...s.modalBox, maxWidth: 380 }} variants={modalVariants} initial="hidden" animate="visible" exit="exit"
+              transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }} onClick={(e) => e.stopPropagation()}>
+              <div style={s.modalHeader}>
+                <div>
+                  <div style={s.modalTitle}>Teléfonos</div>
+                  <div style={s.modalSubtitle}>{telefonosEmpresa.empresa}</div>
+                </div>
+                <button onClick={() => setTelefonosEmpresa(null)} style={s.modalCloseBtn}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.09)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}><X size={15} /></button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {telefonosEmpresa.telefono && (
+                  <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "10px 12px", borderRadius: 8,
+                    background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{telefonosEmpresa.telefono}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.3)",
+                      textTransform: "uppercase", letterSpacing: "0.06em",
+                    }}>Principal</span>
+                  </div>
+                )}
+                {telefonosEmpresa.telefonosExtra?.map((tel, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "10px 12px", borderRadius: 8,
+                    background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.85)" }}>{tel.numero}</span>
+                    {tel.tipo && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 500, color: "rgba(255,255,255,0.3)",
+                        textTransform: "uppercase", letterSpacing: "0.06em",
+                      }}>{tel.tipo}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
             </motion.div>
           </motion.div>
         )}

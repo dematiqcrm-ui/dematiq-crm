@@ -7,6 +7,7 @@ import {
   Settings,
   Building2,
   Briefcase,
+  Truck,
   ChevronRight,
   ChevronLeft,
 } from "lucide-react";
@@ -24,6 +25,11 @@ const menuSections = [
         name: "Empresas",
         icon: Briefcase,
         path: "/empresas",
+      },
+      {
+        name: "Proveedores",
+        icon: Truck,
+        path: "/proveedores",
       },
     ],
   },

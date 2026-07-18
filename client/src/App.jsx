@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Reportes from "./pages/Reportes";
 import ParquesIndustriales from "./pages/ParquesIndustriales";
 import Empresas from "./pages/Empresas";
+import Proveedores from "./pages/Proveedores";
 import Configuracion from "./pages/Configuracion";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -59,6 +60,15 @@ function App() {
         element={
           <ProtectedRoute>
             <Empresas />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/proveedores"
+        element={
+          <ProtectedRoute>
+            <Proveedores />
           </ProtectedRoute>
         }
       />
