@@ -20,7 +20,6 @@ export const enviarCorreo = async (req, res) => {
             port: cuenta.smtpPort || 587,
             secure: false,
             auth: { user: cuenta.email, pass: cuenta.password },
-            tls: { ciphers: "SSLv3" },
           }
         : {
             service: cuenta.servicio,

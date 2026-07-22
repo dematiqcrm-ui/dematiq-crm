@@ -178,12 +178,11 @@ function StyledSelect({ value, onChange, children, disabled }) {
 
 // ─── Panel de filtros de exportación ─────────────────────────────────────────
 function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {  
-  const [filtros, setFiltros]     = useState({ estados: [], parques: [], empresas: [] });
+  const [filtros, setFiltros]     = useState({ estados: [], parques: [], empresas: [], proveedores: [] });
   const [loadingF, setLoadingF]   = useState(true);
-  const [tipoFiltro, setTipoFiltro] = useState("todo");   // todo | estado | parque | empresa
+  const [tipoFiltro, setTipoFiltro] = useState("todo");
   const [valorFiltro, setValorFiltro] = useState("");
 
-  // Carga la lista de estados, parques y empresas disponibles
   useEffect(() => {
     const jwt = localStorage.getItem("token");
     fetch(`${API}/export/filtros`, { headers: { Authorization: `Bearer ${jwt}` } })
@@ -193,26 +192,19 @@ function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {
       .finally(() => setLoadingF(false));
   }, []);
 
-    
-
-  // Al cambiar tipo, resetear el valor seleccionado
   const handleTipoChange = (t) => {
     setTipoFiltro(t);
     setValorFiltro("");
   };
 
-  // Construye los params de query
   const buildParams = () => {
     if (tipoFiltro === "todo" || !valorFiltro) return "tipo=todo";
     return `tipo=${tipoFiltro}&valor=${encodeURIComponent(valorFiltro)}`;
   };
 
-  // Label descriptivo para los botones de export
   const labelFiltro = () => {
     if (tipoFiltro === "todo") return "Todo";
-    if (tipoFiltro === "estado") {
-      return valorFiltro ? `Estado: ${valorFiltro}` : "Estado (sin seleccionar)";
-    }
+    if (tipoFiltro === "estado") return valorFiltro ? `Estado: ${valorFiltro}` : "Estado (sin seleccionar)";
     if (tipoFiltro === "parque") {
       const p = filtros.parques.find((x) => x._id === valorFiltro);
       return p ? `Parque: ${p.nombre}` : "Parque (sin seleccionar)";
@@ -221,11 +213,14 @@ function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {
       const e = filtros.empresas.find((x) => x._id === valorFiltro);
       return e ? `Empresa: ${e.empresa}` : "Empresa (sin seleccionar)";
     }
+    if (tipoFiltro === "proveedor") {
+      const p = filtros.proveedores.find((x) => x._id === valorFiltro);
+      return p ? `Proveedor: ${p.empresa}` : "Proveedores (todos)";
+    }
     return "";
   };
 
-  // Verifica si falta seleccionar un valor
-  const faltaValor = tipoFiltro !== "todo" && !valorFiltro;
+  const faltaValor = ["estado", "parque", "empresa"].includes(tipoFiltro) && !valorFiltro;
 
   const handleExport = (type) => {
     onExport(type, buildParams());
@@ -233,18 +228,17 @@ function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {
 
   return (
     <div className="space-y-4">
-
-      {/* ── Paso 1: Tipo de filtro ── */}
       <div>
         <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
           1 — Filtrar por
         </p>
         <div className="grid grid-cols-2 gap-2">
           {[
-            { key: "todo",    label: "Todo" },
-            { key: "estado",  label: "Estado" },
-            { key: "parque",  label: "Parque industrial" },
-            { key: "empresa", label: "Empresa" },
+            { key: "todo",      label: "Todo" },
+            { key: "estado",    label: "Estado" },
+            { key: "parque",    label: "Parque industrial" },
+            { key: "empresa",   label: "Empresa" },
+            { key: "proveedor", label: "Proveedor" },
           ].map(({ key, label }) => (
             <button
               key={key}
@@ -260,11 +254,14 @@ function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {
         </div>
       </div>
 
-      {/* ── Paso 2: Seleccionar valor ── */}
       {tipoFiltro !== "todo" && (
         <div>
           <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2">
-            2 — Seleccionar {tipoFiltro === "estado" ? "estado" : tipoFiltro === "parque" ? "parque" : "empresa"}
+            2 — Seleccionar {
+              tipoFiltro === "estado"    ? "estado"   :
+              tipoFiltro === "parque"    ? "parque"   :
+              tipoFiltro === "proveedor" ? "proveedor (opcional)" : "empresa"
+            }
           </p>
 
           {loadingF ? (
@@ -302,6 +299,15 @@ function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {
                 </StyledSelect>
               )}
 
+              {tipoFiltro === "proveedor" && (
+                <StyledSelect value={valorFiltro} onChange={setValorFiltro}>
+                  <option value="">— Todos los proveedores —</option>
+                  {filtros.proveedores.map((p) => (
+                    <option key={p._id} value={p._id}>{p.empresa}</option>
+                  ))}
+                </StyledSelect>
+              )}
+
               {faltaValor && (
                 <p className="text-xs text-yellow-500/80 mt-1.5 flex items-center gap-1">
                   <AlertCircle size={11} /> Selecciona una opción para habilitar la exportación
@@ -312,38 +318,18 @@ function ExportFilterPanel({ exporting, onExport, dbStats, dbStatsLoading }) {
         </div>
       )}
 
-      {/* ── Separador ── */}
       <div className="border-t border-slate-700/60 pt-1" />
 
-      {/* ── Botones de exportación ── */}
       <div className={`space-y-2 transition-opacity ${faltaValor ? "opacity-40 pointer-events-none" : ""}`}>
-        <ExportBtn
-          type="excel"
-          icon={<FileSpreadsheet size={20} className="text-green-400" />}
-          label={`Excel — ${labelFiltro()}`}
-          hoverBorder="hover:border-green-500"
-          spinColor="text-green-400"
-          exporting={exporting}
-          onExport={handleExport}
-        />
-        <ExportBtn
-          type="pdf"
-          icon={<FileText size={20} className="text-red-400" />}
-          label={`PDF — ${labelFiltro()}`}
-          hoverBorder="hover:border-red-500"
-          spinColor="text-red-400"
-          exporting={exporting}
-          onExport={handleExport}
-        />
-        <ExportBtn
-          type="backup"
-          icon={<Database size={20} className="text-blue-400" />}
-          label={`Respaldo JSON — ${labelFiltro()}`}
-          hoverBorder="hover:border-blue-500"
-          spinColor="text-blue-400"
-          exporting={exporting}
-          onExport={handleExport}
-        />
+        <ExportBtn type="excel" icon={<FileSpreadsheet size={20} className="text-green-400" />}
+          label={`Excel — ${labelFiltro()}`} hoverBorder="hover:border-green-500" spinColor="text-green-400"
+          exporting={exporting} onExport={handleExport} />
+        <ExportBtn type="pdf" icon={<FileText size={20} className="text-red-400" />}
+          label={`PDF — ${labelFiltro()}`} hoverBorder="hover:border-red-500" spinColor="text-red-400"
+          exporting={exporting} onExport={handleExport} />
+        <ExportBtn type="backup" icon={<Database size={20} className="text-blue-400" />}
+          label={`Respaldo JSON — ${labelFiltro()}`} hoverBorder="hover:border-blue-500" spinColor="text-blue-400"
+          exporting={exporting} onExport={handleExport} />
       </div>
     </div>
   );
@@ -633,73 +619,48 @@ useEffect(() => {
           </div>
 
           {!sistemaDesbloqueado ? (
-            <PinGuard onSuccess={() => setSistemaDesbloqueado(true)} />
-          ) : (
-            <div className="space-y-4">
-              {/* Selector de tabla */}
-            <div className="flex gap-2 mb-2">
-              {["todo", "empresas", "parques"].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTablaExport(t)}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium border transition-all capitalize
-                    ${tablaExport === t
-                      ? "bg-blue-600/20 border-blue-500 text-blue-300"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"}`}
-                >
-                  {t === "todo" ? "Todo" : t.charAt(0).toUpperCase() + t.slice(1)}
-                </button>
-              ))}
-            </div>
-            <ExportBtn type="excel"
-              icon={<FileSpreadsheet size={20} className="text-green-400" />}
-              label={`Exportar Excel — ${tablaExport}`}
-              hoverBorder="hover:border-green-500" spinColor="text-green-400"
-              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
-            <ExportBtn type="pdf"
-              icon={<FileText size={20} className="text-red-400" />}
-              label={`Exportar PDF — ${tablaExport}`}
-              hoverBorder="hover:border-red-500" spinColor="text-red-400"
-              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
-            <ExportBtn type="backup"
-              icon={<Database size={20} className="text-blue-400" />}
-              label={`Respaldo JSON — ${tablaExport}`}
-              hoverBorder="hover:border-blue-500" spinColor="text-blue-400"
-              exporting={exporting} onExport={(t) => handleExport(t, tablaExport)} />
+  <PinGuard onSuccess={() => setSistemaDesbloqueado(true)} />
+) : (
+  <div className="space-y-4">
+    <ExportFilterPanel
+      exporting={exporting}
+      onExport={handleExport}
+      dbStats={dbStats}
+      dbStatsLoading={dbStatsLoading}
+    />
 
-            {/* Tamaño de la BD */}
-            <div className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-800 border border-slate-700">
-              <div className="flex items-center gap-3">
-                <Database size={20} className="text-green-400" />
-                <span className="text-sm font-medium">Tamaño de la base de datos</span>
-              </div>
-              {dbStatsLoading ? (
-                <span className="flex items-center gap-2 text-slate-400 text-xs">
-                  <Loader2 size={12} className="animate-spin" /> Calculando…
-                </span>
-              ) : dbStats ? (
-                <span className="text-xs bg-blue-900/30 border border-blue-700/50 text-blue-300 px-3 py-1.5 rounded-full font-semibold">
-                  {formatBytes(dbStats.totalSize ?? dbStats.dataSize)}
-                </span>
-              ) : (
-                <span className="text-xs bg-red-900/30 border border-red-700/50 text-red-400 px-3 py-1.5 rounded-full font-medium">
-                  No disponible
-                </span>
-              )}
-            </div>
+    {/* Tamaño de la BD */}
+    <div className="w-full flex items-center justify-between p-4 rounded-xl bg-slate-800 border border-slate-700">
+      <div className="flex items-center gap-3">
+        <Database size={20} className="text-green-400" />
+        <span className="text-sm font-medium">Tamaño de la base de datos</span>
+      </div>
+      {dbStatsLoading ? (
+        <span className="flex items-center gap-2 text-slate-400 text-xs">
+          <Loader2 size={12} className="animate-spin" /> Calculando…
+        </span>
+      ) : dbStats ? (
+        <span className="text-xs bg-blue-900/30 border border-blue-700/50 text-blue-300 px-3 py-1.5 rounded-full font-semibold">
+          {formatBytes(dbStats.totalSize ?? dbStats.dataSize)}
+        </span>
+      ) : (
+        <span className="text-xs bg-red-900/30 border border-red-700/50 text-red-400 px-3 py-1.5 rounded-full font-medium">
+          No disponible
+        </span>
+      )}
+    </div>
 
-              {/* Volver a bloquear */}
-              <button
-                onClick={() => setSistemaDesbloqueado(false)}
-                className="w-full flex items-center justify-center gap-2 mt-2 p-3 rounded-xl
-                           bg-slate-800 border border-slate-700 hover:border-yellow-500
-                           text-slate-400 hover:text-yellow-400 text-sm transition-all"
-              >
-                <Lock size={14} /> Volver a bloquear
-              </button>
-              
-            </div>
-          )}
+    {/* Volver a bloquear */}
+    <button
+      onClick={() => setSistemaDesbloqueado(false)}
+      className="w-full flex items-center justify-center gap-2 mt-2 p-3 rounded-xl
+                 bg-slate-800 border border-slate-700 hover:border-yellow-500
+                 text-slate-400 hover:text-yellow-400 text-sm transition-all"
+    >
+      <Lock size={14} /> Volver a bloquear
+    </button>
+  </div>
+)}
         </div>
       </div>
 

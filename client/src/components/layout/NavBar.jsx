@@ -11,6 +11,7 @@ const routeNames = {
   "/configuracion": "Configuración",
   "/parques": "Parques industriales",
   "/empresas": "Empresas",
+  "/proveedores": "Proveedores",
 };
 
 
