@@ -134,3 +134,26 @@ export const empresasPorParque = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+export const getProveedoresPorEstado = async (req, res) => {
+  try {
+    const proveedores = await Empresa.find(
+      { tipo: "proveedor", estado: { $ne: "" } },
+      "empresa estado"
+    );
+
+    const agrupado = proveedores.reduce((acc, p) => {
+      if (!p.estado) return acc;
+      if (!acc[p.estado]) acc[p.estado] = { estado: p.estado, total: 0, empresas: [] };
+      acc[p.estado].total += 1;
+      acc[p.estado].empresas.push(p.empresa);
+      return acc;
+    }, {});
+
+    const data = Object.values(agrupado).sort((a, b) => b.total - a.total);
+
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

@@ -22,6 +22,7 @@ const modalVariants = {
   exit:    { opacity: 0, scale: 0.96, y: 16 },
 };
 
+
 const GLOBAL_SELECT_STYLE = `
   select, select option {
     background-color: #131720 !important;
@@ -170,6 +171,8 @@ export default function Empresas() {
   const [cuentas, setCuentas]               = useState([]);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState("");
   const [detailEmpresaLive, setDetailEmpresaLive] = useState(null);
+  const [filtroCategoria, setFiltroCategoria] = useState("todas");
+
 
   useEffect(() => { setDetailEmpresaLive(detailEmpresa); }, [detailEmpresa]);
 
@@ -349,21 +352,23 @@ export default function Empresas() {
   };
 
   const empresasFiltradas = empresas
-    .filter((e) => {
-      const q = search.toLowerCase();
-      return (
-        e.empresa?.toLowerCase().includes(q) ||
-        e.giroEmpresa?.toLowerCase().includes(q) ||
-        e.numero?.toLowerCase().includes(q) ||
-        e.telefono?.toLowerCase().includes(q) ||
-        e.telefonosExtra?.some((t) => t.numero?.toLowerCase().includes(q))
-      );
-    })
-    .sort((a, b) => {
-      const nameA = a.empresa?.toLowerCase() || "";
-      const nameB = b.empresa?.toLowerCase() || "";
-      return sortAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
-    });
+  .filter((e) => {
+    const q = search.toLowerCase();
+    const coincideBusqueda =
+      e.empresa?.toLowerCase().includes(q) ||
+      e.giroEmpresa?.toLowerCase().includes(q) ||
+      e.numero?.toLowerCase().includes(q) ||
+      e.telefono?.toLowerCase().includes(q) ||
+      e.telefonosExtra?.some((t) => t.numero?.toLowerCase().includes(q));
+    const coincideCategoria =
+      filtroCategoria === "todas" || e.categoria === filtroCategoria;
+    return coincideBusqueda && coincideCategoria;
+  })
+  .sort((a, b) => {
+    const nameA = a.empresa?.toLowerCase() || "";
+    const nameB = b.empresa?.toLowerCase() || "";
+    return sortAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+  });
 
   const parqueActual = parques.find((p) => p._id === parqueSeleccionado);
 
@@ -391,50 +396,65 @@ export default function Empresas() {
         </div>
 
         {/* Filtros */}
-        <div style={s.filtersRow}>
-          <div style={s.selectWrap}>
-            <select value={parqueSeleccionado} onChange={(e) => setParqueSeleccionado(e.target.value)}
-              style={s.selectInput}
-              onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; }}
-              onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}>
-              {parques.length === 0 && <option value="">Sin parques</option>}
-              {parques.map((p) => (
-                <option key={p._id} value={p._id} style={{ background: "#131720", color: "#e2e8f0" }}>{p.nombre}</option>
-              ))}
-            </select>
-            <ChevronIcon />
-          </div>
-          <div style={s.searchWrap}>
-            <SearchIcon />
-            <input type="text" placeholder="Buscar empresa, giro, teléfono..."
-              value={search} onChange={(e) => setSearch(e.target.value)} style={s.searchInput}
-              onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; e.target.style.background = "#16192a"; }}
-              onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.background = "#131720"; }} />
-          </div>
-        </div>
+<div style={s.filtersRow}>
+  <div style={s.selectWrap}>
+    <select value={parqueSeleccionado} onChange={(e) => setParqueSeleccionado(e.target.value)}
+      style={s.selectInput}
+      onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; }}
+      onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}>
+      {parques.length === 0 && <option value="">Sin parques</option>}
+      {parques.map((p) => (
+        <option key={p._id} value={p._id} style={{ background: "#131720", color: "#e2e8f0" }}>{p.nombre}</option>
+      ))}
+    </select>
+    <ChevronIcon />
+  </div>
+
+  {/* ── Filtro por categoría ── */}
+  <div style={{ ...s.selectWrap, flex: "0.7" }}>
+    <select value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}
+      style={s.selectInput}
+      onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; }}
+      onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; }}>
+      <option value="todas">Todas las categorías</option>
+      <option value="A">Categoría A</option>
+      <option value="B">Categoría B</option>
+      <option value="C">Categoría C</option>
+    </select>
+    <ChevronIcon />
+  </div>
+
+  <div style={s.searchWrap}>
+    <SearchIcon />
+    <input type="text" placeholder="Buscar empresa, giro, teléfono..."
+      value={search} onChange={(e) => setSearch(e.target.value)} style={s.searchInput}
+      onFocus={(e) => { e.target.style.borderColor = "rgba(99,130,246,0.5)"; e.target.style.background = "#16192a"; }}
+      onBlur={(e)  => { e.target.style.borderColor = "rgba(255,255,255,0.1)"; e.target.style.background = "#131720"; }} />
+  </div>
+</div>
 
         {/* Tabla */}
         <div style={s.tableWrap}>
           <table style={s.table}>
             <thead>
               <tr>
-                {["#", "Empresa", "Giro", "Dirección", "Teléfono", "Página web", "Contactos", "Acciones"].map((h) => (
-                  h === "Empresa" ? (
-                    <th key={h} style={{ ...s.th, cursor: "pointer", userSelect: "none" }} onClick={() => setSortAsc(!sortAsc)}>
-                      Empresa {sortAsc ? "↑" : "↓"}
-                    </th>
-                  ) : <th key={h} style={s.th}>{h}</th>
-                ))}
-              </tr>
+            {["#", "Empresa", "Giro", "Categoría", "Dirección", "Teléfono", "Página web", "Contactos", "Acciones"].map((h) => (
+              h === "Empresa" ? (
+                <th key={h} style={{ ...s.th, cursor: "pointer", userSelect: "none" }} onClick={() => setSortAsc(!sortAsc)}>
+                  Empresa {sortAsc ? "↑" : "↓"}
+                </th>
+              ) : <th key={h} style={s.th}>{h}</th>
+            ))}
+          </tr>
             </thead>
             <tbody>
               {!parqueSeleccionado ? (
-                <tr><td colSpan={8} style={s.empty}>
+                <tr><td colSpan={9} style={s.empty}>
                   <Building2 size={28} style={{ margin: "0 auto 8px", display: "block", opacity: 0.2 }} />
                   Selecciona un parque industrial
                 </td></tr>
               ) : empresasFiltradas.length === 0 ? (
-                <tr><td colSpan={8} style={s.empty}>
+                <tr><td colSpan={9} style={s.empty}>
                   <Building2 size={28} style={{ margin: "0 auto 8px", display: "block", opacity: 0.2 }} />
                   Sin empresas en este parque
                 </td></tr>
@@ -462,6 +482,27 @@ export default function Empresas() {
                         </span>
                       ) : <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
                     </td>
+                    <td style={s.td}>
+                          {empresa.categoria ? (
+                            <span style={{
+                              display: "inline-block", padding: "2px 9px", borderRadius: 6,
+                              fontSize: 10, fontWeight: 700,
+                              background: empresa.categoria === "A" ? "rgba(52,211,153,0.12)"
+                                        : empresa.categoria === "B" ? "rgba(250,204,21,0.12)"
+                                        : "rgba(248,113,113,0.12)",
+                              color: empresa.categoria === "A" ? "#34d399"
+                                  : empresa.categoria === "B" ? "#facc15"
+                                  : "#f87171",
+                              border: `1px solid ${
+                                empresa.categoria === "A" ? "rgba(52,211,153,0.25)"
+                                : empresa.categoria === "B" ? "rgba(250,204,21,0.25)"
+                                : "rgba(248,113,113,0.25)"
+                              }`,
+                            }}>
+                              {empresa.categoria}
+                            </span>
+                          ) : <span style={{ color: "rgba(255,255,255,0.13)" }}>—</span>}
+                        </td>
                     <td style={{ ...s.td, maxWidth: 160 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 120 }} title={empresa.direccion}>

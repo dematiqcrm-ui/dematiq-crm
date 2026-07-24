@@ -61,6 +61,12 @@ const empresaSchema = new mongoose.Schema(
 
     municipio: String,
 
+    categoria: {
+      type: String,
+      enum: ["A", "B", "C", ""],
+      default: "",
+    },
+
     contactos: [contactoSchema],
 
     tipo: {

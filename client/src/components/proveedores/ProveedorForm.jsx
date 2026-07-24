@@ -8,18 +8,25 @@ const CAMPO_CONTACTO_VACIO = {
   correo: "",
   telefono: "",
   nota: "",
-  categoria: "",
   telefonos: [{ tipo: "", numero: "" }],
 };
 
-export default function EmpresaForm({
+const ESTADOS_MEXICO = [
+  "Aguascalientes", "Baja California", "Baja California Sur", "Campeche",
+  "Chiapas", "Chihuahua", "Ciudad de México", "Coahuila", "Colima",
+  "Durango", "Estado de México", "Guanajuato", "Guerrero", "Hidalgo",
+  "Jalisco", "Michoacán", "Morelos", "Nayarit", "Nuevo León", "Oaxaca",
+  "Puebla", "Querétaro", "Quintana Roo", "San Luis Potosí", "Sinaloa",
+  "Sonora", "Tabasco", "Tamaulipas", "Tlaxcala", "Veracruz",
+  "Yucatán", "Zacatecas",
+];
+
+export default function ProveedorForm({
   initialData,
-  parqueIndustrialId,
   onSubmit,
   onCancel,
 }) {
   const [form, setForm] = useState({
-    parqueIndustrialId: parqueIndustrialId || "",
     numero: "",
     empresa: "",
     giroEmpresa: "",
@@ -28,14 +35,13 @@ export default function EmpresaForm({
     telefonosExtra: [],
     paginaWeb: "",
     notas: "",
+    estado: "",
     contactos: [{ ...CAMPO_CONTACTO_VACIO }],
   });
 
   useEffect(() => {
     if (initialData) {
-        console.log("initialData contactos:", initialData.contactos);
       setForm({
-        parqueIndustrialId: initialData.parqueIndustrialId || parqueIndustrialId || "",
         numero:      initialData.numero      || "",
         empresa:     initialData.empresa     || "",
         giroEmpresa: initialData.giroEmpresa || "",
@@ -44,7 +50,7 @@ export default function EmpresaForm({
         telefonosExtra: initialData.telefonosExtra?.length > 0 ? initialData.telefonosExtra : [],
         paginaWeb:   initialData.paginaWeb   || "",
         notas:       initialData.notas       || "",
-        categoria:   initialData.categoria   || "",
+        estado:      initialData.estado      || "",
         contactos: initialData.contactos?.length > 0
           ? initialData.contactos.map((c) => ({
               nombre:   c.nombre   || "",
@@ -58,7 +64,7 @@ export default function EmpresaForm({
           : [{ ...CAMPO_CONTACTO_VACIO }],
       });
     }
-  }, [initialData, parqueIndustrialId]);
+  }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -172,7 +178,7 @@ export default function EmpresaForm({
   return (
     <>
       <style>{`
-        .ef-input {
+        .pf-input {
           width: 100%; padding: 0 12px; height: 38px; border-radius: 8px;
           background: #131720; color: #e2e8f0;
           border: 1px solid rgba(255,255,255,0.1);
@@ -181,12 +187,12 @@ export default function EmpresaForm({
           outline: none; box-sizing: border-box;
           appearance: none; -webkit-appearance: none;
         }
-        .ef-input::placeholder { color: rgba(255,255,255,0.22); }
-        .ef-input:focus {
+        .pf-input::placeholder { color: rgba(255,255,255,0.22); }
+        .pf-input:focus {
           border-color: rgba(99,130,246,0.6);
           box-shadow: 0 0 0 3px rgba(99,130,246,0.12);
         }
-        .ef-textarea {
+        .pf-textarea {
           width: 100%; padding: 10px 12px; border-radius: 8px;
           background: #131720; color: #e2e8f0;
           border: 1px solid rgba(255,255,255,0.1);
@@ -194,41 +200,41 @@ export default function EmpresaForm({
           outline: none; box-sizing: border-box;
           transition: border-color 0.15s, box-shadow 0.15s;
         }
-        .ef-textarea::placeholder { color: rgba(255,255,255,0.22); }
-        .ef-textarea:focus {
+        .pf-textarea::placeholder { color: rgba(255,255,255,0.22); }
+        .pf-textarea:focus {
           border-color: rgba(99,130,246,0.6);
           box-shadow: 0 0 0 3px rgba(99,130,246,0.12);
         }
-        .ef-label {
+        .pf-label {
           display: block; font-size: 10.5px; font-weight: 600;
           color: rgba(255,255,255,0.35); text-transform: uppercase;
           letter-spacing: 0.08em; margin-bottom: 5px;
         }
-        .ef-section-title {
+        .pf-section-title {
           font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.25);
           text-transform: uppercase; letter-spacing: 0.09em;
           padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.06);
           margin-bottom: 12px;
         }
-        .ef-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 2px 0; }
-        .ef-contact-card {
+        .pf-divider { border: none; border-top: 1px solid rgba(255,255,255,0.06); margin: 2px 0; }
+        .pf-contact-card {
           background: rgba(255,255,255,0.025);
           border: 1px solid rgba(255,255,255,0.07);
           border-radius: 10px; padding: 14px; position: relative;
         }
-        .ef-contact-num {
+        .pf-contact-num {
           font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.2);
           text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px;
         }
-        .ef-add-btn {
+        .pf-add-btn {
           background: none; border: 1px solid rgba(99,130,246,0.3);
           color: #818cf8; font-size: 12px; font-weight: 500;
           padding: 4px 10px; border-radius: 6px; cursor: pointer;
           display: flex; align-items: center; gap: 4px;
           transition: background 0.15s, border-color 0.15s; font-family: inherit;
         }
-        .ef-add-btn:hover { background: rgba(99,130,246,0.1); border-color: rgba(99,130,246,0.5); }
-        .ef-remove-btn {
+        .pf-add-btn:hover { background: rgba(99,130,246,0.1); border-color: rgba(99,130,246,0.5); }
+        .pf-remove-btn {
           position: absolute; top: 10px; right: 10px;
           width: 22px; height: 22px; border-radius: 50%;
           background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2);
@@ -236,122 +242,123 @@ export default function EmpresaForm({
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; transition: background 0.15s;
         }
-        .ef-remove-btn:hover { background: rgba(248,113,113,0.18); }
-        .ef-btn-cancel {
+        .pf-remove-btn:hover { background: rgba(248,113,113,0.18); }
+        .pf-btn-cancel {
           padding: 0 18px; height: 38px; border-radius: 8px;
           background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
           color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500;
           cursor: pointer; transition: background 0.15s, border-color 0.15s; font-family: inherit;
         }
-        .ef-btn-cancel:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.75); }
-        .ef-btn-submit {
+        .pf-btn-cancel:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.75); }
+        .pf-btn-submit {
           padding: 0 20px; height: 38px; border-radius: 8px;
           background: #3b5bff; border: 1px solid rgba(99,130,246,0.4);
           color: #fff; font-size: 13px; font-weight: 500;
           cursor: pointer; transition: background 0.15s; font-family: inherit;
         }
-        .ef-btn-submit:hover { background: #2e4ee0; }
-        .ef-required-badge {
+        .pf-btn-submit:hover { background: #2e4ee0; }
+        .pf-required-badge {
           font-size: 10px; color: rgba(248,113,113,0.7); font-weight: 500;
           margin-left: 4px; text-transform: none; letter-spacing: 0;
         }
-        .ef-nota-badge {
+        .pf-nota-badge {
           display: inline-flex; align-items: center; gap: 4px;
           font-size: 10px; color: rgba(250,204,21,0.7); font-weight: 500;
           margin-left: 4px; text-transform: none; letter-spacing: 0;
         }
 
         /* ── Teléfonos múltiples por contacto ── */
-        .ef-tel-list {
+        .pf-tel-list {
           display: flex; flex-direction: column; gap: 6px;
         }
-        .ef-tel-row {
+        .pf-tel-row {
           display: grid;
           grid-template-columns: 110px 1fr 26px;
           gap: 6px;
           align-items: center;
         }
-        .ef-tel-input {
+        .pf-tel-input {
           height: 32px; padding: 0 10px;
         }
-        .ef-tel-remove {
+        .pf-tel-remove {
           width: 22px; height: 22px; border-radius: 50%;
           background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.2);
           color: #f87171; font-size: 13px; line-height: 1;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; transition: background 0.15s; flex-shrink: 0;
         }
-        .ef-tel-remove:hover { background: rgba(248,113,113,0.18); }
-        .ef-add-tel-btn {
+        .pf-tel-remove:hover { background: rgba(248,113,113,0.18); }
+        .pf-add-tel-btn {
           background: none; border: 1px dashed rgba(99,130,246,0.35);
           color: #818cf8; font-size: 11.5px; font-weight: 500;
           padding: 5px 10px; border-radius: 6px; cursor: pointer;
           display: flex; align-items: center; gap: 4px; width: fit-content;
           transition: background 0.15s, border-color 0.15s; font-family: inherit;
         }
-        .ef-add-tel-btn:hover { background: rgba(99,130,246,0.1); border-color: rgba(99,130,246,0.6); }
+        .pf-add-tel-btn:hover { background: rgba(99,130,246,0.1); border-color: rgba(99,130,246,0.6); }
       `}</style>
 
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
 
-        <div className="ef-section-title">Información general</div>
+        <div className="pf-section-title">Información general</div>
 
         <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 10 }}>
           <div>
-            <label className="ef-label">Número</label>
+            <label className="pf-label">Número</label>
             <input type="text" name="numero" placeholder="001"
-              value={form.numero} onChange={handleChange} className="ef-input" />
+              value={form.numero} onChange={handleChange} className="pf-input" />
           </div>
           <div>
-            <label className="ef-label">
-              Empresa <span className="ef-required-badge">requerido</span>
+            <label className="pf-label">
+              Empresa <span className="pf-required-badge">requerido</span>
             </label>
             <input type="text" name="empresa" placeholder="Nombre de la empresa"
-              value={form.empresa} onChange={handleChange} className="ef-input" required />
+              value={form.empresa} onChange={handleChange} className="pf-input" required />
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <label className="ef-label">Giro de la empresa</label>
+            <label className="pf-label">Giro de la empresa</label>
             <input type="text" name="giroEmpresa" placeholder="Manufactura, Logística..."
-              value={form.giroEmpresa} onChange={handleChange} className="ef-input" />
+              value={form.giroEmpresa} onChange={handleChange} className="pf-input" />
           </div>
           <div>
-            <label className="ef-label">Teléfono / Fax</label>
+            <label className="pf-label">Teléfono / Fax</label>
             <input type="text" name="telefono" placeholder="442 123 4567"
-              value={form.telefono} onChange={handleChange} className="ef-input" />
+              value={form.telefono} onChange={handleChange} className="pf-input" />
           </div>
         </div>
 
+        {/* ── Estado (sin categoría, esto solo aplica a proveedores) ── */}
         <div>
-  <label className="ef-label">Categoría</label>
-  <select name="categoria" value={form.categoria} onChange={handleChange} className="ef-input">
-    <option value="">— Sin categoría —</option>
-    <option value="A">Categoría A</option>
-    <option value="B">Categoría B</option>
-    <option value="C">Categoría C</option>
-  </select>
-</div>
+          <label className="pf-label">Estado</label>
+          <select name="estado" value={form.estado} onChange={handleChange} className="pf-input">
+            <option value="">— Elige un estado —</option>
+            {ESTADOS_MEXICO.map((e) => (
+              <option key={e} value={e}>{e}</option>
+            ))}
+          </select>
+        </div>
 
         <div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <label className="ef-label" style={{ marginBottom: 0 }}>Teléfonos adicionales</label>
-            <button type="button" onClick={agregarTelefonoExtra} className="ef-add-tel-btn">
+            <label className="pf-label" style={{ marginBottom: 0 }}>Teléfonos adicionales</label>
+            <button type="button" onClick={agregarTelefonoExtra} className="pf-add-tel-btn">
               <span style={{ fontSize: 13, lineHeight: 1 }}>+</span> Agregar teléfono
             </button>
           </div>
           {form.telefonosExtra.length > 0 && (
-            <div className="ef-tel-list">
+            <div className="pf-tel-list">
               {form.telefonosExtra.map((tel, telIndex) => (
-                <div key={telIndex} className="ef-tel-row">
+                <div key={telIndex} className="pf-tel-row">
                   <input
                     type="text"
                     name="tipo"
                     placeholder="Fijo, Celular..."
                     value={tel.tipo}
                     onChange={(e) => handleTelefonoExtraChange(telIndex, e)}
-                    className="ef-input ef-tel-input"
+                    className="pf-input pf-tel-input"
                   />
                   <input
                     type="text"
@@ -359,12 +366,12 @@ export default function EmpresaForm({
                     placeholder="442 123 4567"
                     value={tel.numero}
                     onChange={(e) => handleTelefonoExtraChange(telIndex, e)}
-                    className="ef-input ef-tel-input"
+                    className="pf-input pf-tel-input"
                   />
                   <button
                     type="button"
                     onClick={() => eliminarTelefonoExtra(telIndex)}
-                    className="ef-tel-remove"
+                    className="pf-tel-remove"
                     title="Eliminar teléfono"
                   >
                     ×
@@ -376,68 +383,68 @@ export default function EmpresaForm({
         </div>
 
         <div>
-          <label className="ef-label">Dirección</label>
+          <label className="pf-label">Dirección</label>
           <input type="text" name="direccion" placeholder="Calle, número, colonia..."
-            value={form.direccion} onChange={handleChange} className="ef-input" />
+            value={form.direccion} onChange={handleChange} className="pf-input" />
         </div>
 
         <div>
-          <label className="ef-label">Página web</label>
+          <label className="pf-label">Página web</label>
           <input type="url" name="paginaWeb" placeholder="https://www.empresa.com"
-            value={form.paginaWeb} onChange={handleChange} className="ef-input" />
+            value={form.paginaWeb} onChange={handleChange} className="pf-input" />
         </div>
 
-        <hr className="ef-divider" />
+        <hr className="pf-divider" />
 
         {/* Contactos */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div className="ef-section-title" style={{ marginBottom: 0, borderBottom: "none", paddingBottom: 0 }}>
+          <div className="pf-section-title" style={{ marginBottom: 0, borderBottom: "none", paddingBottom: 0 }}>
             Contactos
           </div>
-          <button type="button" onClick={agregarContacto} className="ef-add-btn">
+          <button type="button" onClick={agregarContacto} className="pf-add-btn">
             <span style={{ fontSize: 16, lineHeight: 1 }}>+</span> Agregar
           </button>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {form.contactos.map((contacto, index) => (
-            <div key={index} className="ef-contact-card">
+            <div key={index} className="pf-contact-card">
               {form.contactos.length > 1 && (
                 <button type="button" onClick={() => eliminarContacto(index)}
-                  className="ef-remove-btn" title="Eliminar contacto">×</button>
+                  className="pf-remove-btn" title="Eliminar contacto">×</button>
               )}
-              <div className="ef-contact-num">Contacto {index + 1}</div>
+              <div className="pf-contact-num">Contacto {index + 1}</div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label className="ef-label">Nombre</label>
+                  <label className="pf-label">Nombre</label>
                   <input type="text" name="nombre" placeholder="Nombre completo"
-                    value={contacto.nombre} onChange={(e) => handleContactoChange(index, e)} className="ef-input" />
+                    value={contacto.nombre} onChange={(e) => handleContactoChange(index, e)} className="pf-input" />
                 </div>
                 <div>
-                  <label className="ef-label">Puesto / Área</label>
+                  <label className="pf-label">Puesto / Área</label>
                   <input type="text" name="puesto" placeholder="Gerente, RH..."
-                    value={contacto.puesto} onChange={(e) => handleContactoChange(index, e)} className="ef-input" />
+                    value={contacto.puesto} onChange={(e) => handleContactoChange(index, e)} className="pf-input" />
                 </div>
                 <div>
-                  <label className="ef-label">Correo electrónico</label>
+                  <label className="pf-label">Correo electrónico</label>
                   <input type="email" name="correo" placeholder="correo@empresa.com"
-                    value={contacto.correo} onChange={(e) => handleContactoChange(index, e)} className="ef-input" />
+                    value={contacto.correo} onChange={(e) => handleContactoChange(index, e)} className="pf-input" />
                 </div>
 
                 {/* ── Teléfonos (uno o más) ── */}
                 <div>
-                  <label className="ef-label">Teléfono(s)</label>
-                  <div className="ef-tel-list">
+                  <label className="pf-label">Teléfono(s)</label>
+                  <div className="pf-tel-list">
                     {contacto.telefonos.map((tel, telIndex) => (
-                      <div key={telIndex} className="ef-tel-row">
+                      <div key={telIndex} className="pf-tel-row">
                         <input
                           type="text"
                           name="tipo"
                           placeholder="Fijo, Celular..."
                           value={tel.tipo}
                           onChange={(e) => handleTelefonoChange(index, telIndex, e)}
-                          className="ef-input ef-tel-input"
+                          className="pf-input pf-tel-input"
                         />
                         <input
                           type="text"
@@ -445,13 +452,13 @@ export default function EmpresaForm({
                           placeholder="442 123 4567"
                           value={tel.numero}
                           onChange={(e) => handleTelefonoChange(index, telIndex, e)}
-                          className="ef-input ef-tel-input"
+                          className="pf-input pf-tel-input"
                         />
                         {contacto.telefonos.length > 1 && (
                           <button
                             type="button"
                             onClick={() => eliminarTelefono(index, telIndex)}
-                            className="ef-tel-remove"
+                            className="pf-tel-remove"
                             title="Eliminar teléfono"
                           >
                             ×
@@ -465,7 +472,7 @@ export default function EmpresaForm({
                     <button
                       type="button"
                       onClick={() => agregarTelefono(index)}
-                      className="ef-add-tel-btn"
+                      className="pf-add-tel-btn"
                     >
                       <span style={{ fontSize: 13, lineHeight: 1 }}>+</span> Agregar teléfono
                     </button>
@@ -475,9 +482,9 @@ export default function EmpresaForm({
 
               {/* ── Nota del contacto ── */}
               <div style={{ marginTop: 10 }}>
-                <label className="ef-label">
+                <label className="pf-label">
                   Nota de seguimiento
-                  <span className="ef-nota-badge">✦ por contacto</span>
+                  <span className="pf-nota-badge">✦ por contacto</span>
                 </label>
                 <textarea
                   name="nota"
@@ -485,7 +492,7 @@ export default function EmpresaForm({
                   value={contacto.nota}
                   onChange={(e) => handleContactoChange(index, e)}
                   rows={2}
-                  className="ef-textarea"
+                  className="pf-textarea"
                 />
               </div>
 
@@ -512,18 +519,18 @@ export default function EmpresaForm({
           ))}
         </div>
 
-        <hr className="ef-divider" />
+        <hr className="pf-divider" />
 
         {/* Notas empresa */}
         <div>
-          <label className="ef-label">Notas generales de la empresa</label>
+          <label className="pf-label">Notas generales</label>
           <textarea name="notas" placeholder="Observaciones adicionales..."
-            value={form.notas} onChange={handleChange} rows="3" className="ef-textarea" />
+            value={form.notas} onChange={handleChange} rows="3" className="pf-textarea" />
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 4 }}>
-          <button type="button" onClick={onCancel} className="ef-btn-cancel">Cancelar</button>
-          <button type="submit" className="ef-btn-submit">Guardar</button>
+          <button type="button" onClick={onCancel} className="pf-btn-cancel">Cancelar</button>
+          <button type="submit" className="pf-btn-submit">Guardar</button>
         </div>
       </form>
     </>

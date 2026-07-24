@@ -85,6 +85,22 @@ const CustomBarTooltip = ({ active, payload, label }) => {
   );
 };
 
+const ProveedoresTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  const empresas = payload[0].payload.empresas || [];
+  return (
+    <div style={{ background: "#0e1119", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, padding: "8px 12px", fontSize: 12, maxWidth: 260 }}>
+      <div style={{ color: "rgba(255,255,255,0.4)", marginBottom: 4, fontWeight: 600 }}>{label}</div>
+      {empresas.map((nombre, i) => (
+        <div key={i} style={{ color: "rgba(255,255,255,0.75)", padding: "2px 0" }}>• {nombre}</div>
+      ))}
+      <div style={{ color: "rgba(255,255,255,0.3)", marginTop: 4, fontSize: 11 }}>
+        Total: {payload[0].value} proveedor{payload[0].value !== 1 ? "es" : ""}
+      </div>
+    </div>
+  );
+};
+
 function Collapsible({ title, badge, defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -433,7 +449,7 @@ const totalIncompletos = parqueSel === "todos"
                     tickLine={false}
                     tickFormatter={(v) => v.length > 18 ? v.slice(0, 17) + "…" : v}
                   />
-                  <Tooltip content={<CustomBarTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
+                  <Tooltip content={<ProveedoresTooltip />} cursor={{ fill: "rgba(255,255,255,0.03)" }} />
                   <Bar dataKey="total" radius={[0, 4, 4, 0]} maxBarSize={20}>
                     {proveedoresEstado.map((_, i) => (
                       <Cell key={i} fill="#818cf8" />

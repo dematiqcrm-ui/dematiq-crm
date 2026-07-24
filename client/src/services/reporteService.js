@@ -13,14 +13,14 @@ export const getResumen =
 export const getProveedoresPorEstado = async () => {
   const res = await api.get("/proveedores");
   const proveedores = res.data;
-  const conteo = {};
+  const agrupado = {};
   for (const p of proveedores) {
     const estado = p.estado?.trim() || "Sin estado";
-    conteo[estado] = (conteo[estado] || 0) + 1;
+    if (!agrupado[estado]) agrupado[estado] = { estado, total: 0, empresas: [] };
+    agrupado[estado].total += 1;
+    agrupado[estado].empresas.push(p.empresa);
   }
-  return Object.entries(conteo)
-    .map(([estado, total]) => ({ estado, total }))
-    .sort((a, b) => b.total - a.total);
+  return Object.values(agrupado).sort((a, b) => b.total - a.total);
 };
 
 export const getUltimosCorreos = async (desde = null, hasta = null) => {
@@ -51,6 +51,7 @@ export const getParquesIncompletos =
     return res.data;
   };
 
+  
 export const getEmpresasEstado =
   async () => {
     const res =

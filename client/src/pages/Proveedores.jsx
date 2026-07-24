@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import Layout from "../components/layout/Layout";
-import EmpresaForm from "../components/empresas/EmpresaForm";
+import ProveedorForm from "../components/proveedores/ProveedorForm";
 import Swal from "sweetalert2";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -290,12 +290,11 @@ export default function Proveedores() {
                     <X size={15} />
                   </button>
                 </div>
-                <EmpresaForm
-                  initialData={editData}
-                  parqueIndustrialId={null}
-                  onSubmit={handleSubmit}
-                  onCancel={() => { setShowForm(false); setEditData(null); }}
-                />
+                <ProveedorForm
+                    initialData={editData}
+                    onSubmit={handleSubmit}
+                    onCancel={() => { setShowForm(false); setEditData(null); }}
+                  />
               </motion.div>
             </motion.div>
           )}
