@@ -104,10 +104,14 @@ export const getHistorialGlobal = async (req, res) => {
 
     if (desde || hasta) {
       filtro.createdAt = {};
-      if (desde) filtro.createdAt.$gte = new Date(desde);
+      if (desde) {
+        const desdeDate = new Date(desde);
+        desdeDate.setUTCHours(0, 0, 0, 0);
+        filtro.createdAt.$gte = desdeDate;
+      }
       if (hasta) {
         const hastaFin = new Date(hasta);
-        hastaFin.setHours(23, 59, 59, 999);
+        hastaFin.setUTCHours(23, 59, 59, 999);
         filtro.createdAt.$lte = hastaFin;
       }
     }
@@ -118,6 +122,41 @@ export const getHistorialGlobal = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(filtro.createdAt ? 200 : 20);
     res.json(historial);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+ 
+};
+
+// DELETE /api/correo/historial-global?desde=&hasta=
+export const deleteHistorialPorRango = async (req, res) => {
+  try {
+    const { desde, hasta } = req.query;
+
+    if (!desde || !hasta) {
+      return res.status(400).json({ message: "Se requieren desde y hasta para borrar" });
+    }
+
+    const filtro = {
+      createdAt: {
+        $gte: new Date(desde),
+        $lte: (() => { const d = new Date(hasta); d.setHours(23,59,59,999); return d; })(),
+      },
+    };
+
+    const resultado = await Historial.deleteMany(filtro);
+    res.json({ message: `${resultado.deletedCount} correo(s) eliminado(s)` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// DELETE /api/correo/historial/:id
+export const deleteHistorialById = async (req, res) => {
+  try {
+    const resultado = await Historial.findByIdAndDelete(req.params.id);
+    if (!resultado) return res.status(404).json({ message: "Correo no encontrado" });
+    res.json({ message: "Correo eliminado" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

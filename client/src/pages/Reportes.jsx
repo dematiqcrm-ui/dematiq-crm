@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../services/api";
+import Swal from "sweetalert2";
 import Layout from "../components/layout/Layout";
 import {
   getResumen,
@@ -299,8 +301,11 @@ export default function Reportes() {
   const [parqueSel, setParqueSel] = useState("todos");
   const [ultimosCorreos, setUltimosCorreos] = useState([]);
   const [proveedoresEstado, setProveedoresEstado] = useState([]);
-  const [filtroCorreo, setFiltroCorreo] = useState("todos"); // "todos" | "semana" | "mes" 
-
+  const [filtroCorreo, setFiltroCorreo] = useState("todos"); // "todos" | "semana" | "mes" | "año" | "rango"
+  const [rangoDesde, setRangoDesde] = useState("");
+  const [rangoHasta, setRangoHasta] = useState("");
+  const [borrandoCorreos, setBorrandoCorreos] = useState(false);
+  const [seleccionados, setSeleccionados] = useState([]);
   useEffect(() => { cargarDatos(); }, []);
 
   const calcularFechasFiltro = (tipo) => {
@@ -314,11 +319,15 @@ export default function Reportes() {
     if (tipo === "mes") {
       return { desde: fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: fmt(hoy) };
     }
+    if (tipo === "anio") {
+      return { desde: fmt(new Date(hoy.getFullYear(), 0, 1)), hasta: fmt(hoy) };
+    }
     return { desde: null, hasta: null };
   };
 
   const aplicarFiltroCorreo = async (tipo, desde = "", hasta = "") => {
     setFiltroCorreo(tipo);
+    setSeleccionados([]);
     try {
       if (tipo === "rango") {
         const correosData = await getUltimosCorreos(desde || null, hasta || null);
@@ -332,6 +341,57 @@ export default function Reportes() {
         setUltimosCorreos(correosData);
       }
     } catch (error) { console.error(error); }
+  };
+
+const handleBorrarSeleccionados = async () => {
+    if (seleccionados.length === 0) return;
+    const result = await Swal.fire({
+      title: `¿Borrar ${seleccionados.length} correo(s)?`,
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonText: "Cancelar",
+      confirmButtonText: "Sí, borrar",
+    });
+    if (!result.isConfirmed) return;
+    try {
+      setBorrandoCorreos(true);
+      await Promise.all(seleccionados.map((id) => api.delete(`/correo/historial/${id}`)));
+      Swal.fire({ icon: "success", title: "Eliminados", timer: 1500, showConfirmButton: false });
+      setSeleccionados([]);
+      aplicarFiltroCorreo(filtroCorreo, rangoDesde, rangoHasta);
+    } catch {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudieron eliminar los correos" });
+    } finally {
+      setBorrandoCorreos(false);
+    }
+  };
+
+  const handleBorrarCorreos = async () => {
+    if (!rangoDesde || !rangoHasta) return;
+    const result = await Swal.fire({
+      title: "¿Borrar correos?",
+      text: `Se eliminarán todos los correos enviados del ${rangoDesde} al ${rangoHasta}. Esta acción no se puede deshacer.`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#ef4444",
+      cancelButtonText: "Cancelar",
+      confirmButtonText: "Sí, borrar",
+    });
+    if (!result.isConfirmed) return;
+    try {
+      setBorrandoCorreos(true);
+      await api.delete("/correo/historial-global", { params: { desde: rangoDesde, hasta: rangoHasta } });
+      Swal.fire({ icon: "success", title: "Correos eliminados", timer: 1500, showConfirmButton: false });
+      setRangoDesde("");
+      setRangoHasta("");
+      aplicarFiltroCorreo("todos");
+    } catch (error) {
+      Swal.fire({ icon: "error", title: "Error", text: "No se pudieron eliminar los correos" });
+    } finally {
+      setBorrandoCorreos(false);
+    }
   };
 
   const cargarDatos = async () => {
@@ -519,8 +579,8 @@ const totalIncompletos = parqueSel === "todos"
         <Collapsible title="Últimos correos enviados" badge={ultimosCorreos.length} defaultOpen={false}>
           {/* Filtros de fecha */}
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12, flexWrap: "wrap" }}>
-            {["todos", "semana", "mes"].map((tipo) => (
-              <button key={tipo} onClick={() => aplicarFiltroCorreo(tipo)}
+            {["todos", "semana", "mes", "anio", "rango"].map((tipo) => (
+              <button key={tipo} onClick={() => tipo !== "rango" ? aplicarFiltroCorreo(tipo) : setFiltroCorreo("rango")}
                 style={{
                   padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 500,
                   cursor: "pointer", fontFamily: "inherit", transition: "all 0.15s",
@@ -529,10 +589,40 @@ const totalIncompletos = parqueSel === "todos"
                   border: filtroCorreo === tipo ? "1px solid rgba(99,130,246,0.35)" : "1px solid rgba(255,255,255,0.07)",
                 }}
               >
-                {{ todos: "Todos", semana: "Esta semana", mes: "Este mes", rango: "Rango" }[tipo]}
+                {{ todos: "Todos", semana: "Esta semana", mes: "Este mes", anio: "Este año", rango: "Rango" }[tipo]}
               </button>
             ))}
           </div>
+
+          {/* Rango personalizado + borrar */}
+          {filtroCorreo === "rango" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <input type="date" value={rangoDesde} onChange={(e) => setRangoDesde(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "3px 8px", color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "inherit" }} />
+              <span style={{ color: "rgba(255,255,255,0.2)", fontSize: 11 }}>→</span>
+              <input type="date" value={rangoHasta} onChange={(e) => setRangoHasta(e.target.value)}
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, padding: "3px 8px", color: "rgba(255,255,255,0.7)", fontSize: 11, fontFamily: "inherit" }} />
+              <button onClick={() => aplicarFiltroCorreo("rango", rangoDesde, rangoHasta)}
+                disabled={!rangoDesde || !rangoHasta}
+                style={{ padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", background: "rgba(99,130,246,0.18)", color: "#818cf8", border: "1px solid rgba(99,130,246,0.35)" }}>
+                Buscar
+              </button>
+              <button onClick={handleBorrarCorreos}
+                disabled={!rangoDesde || !rangoHasta || borrandoCorreos}
+                style={{ padding: "4px 12px", borderRadius: 20, fontSize: 11, fontWeight: 500, cursor: "pointer", fontFamily: "inherit", background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)", opacity: (!rangoDesde || !rangoHasta) ? 0.4 : 1 }}>
+                {borrandoCorreos ? "Borrando..." : "🗑 Borrar rango"}
+              </button>
+            </div>
+          )}
+
+          {seleccionados.length > 0 && (
+            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+              <button onClick={handleBorrarSeleccionados} disabled={borrandoCorreos}
+                style={{ padding: "5px 14px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", background: "rgba(248,113,113,0.12)", color: "#f87171", border: "1px solid rgba(248,113,113,0.3)" }}>
+                {borrandoCorreos ? "Eliminando..." : `🗑 Eliminar (${seleccionados.length}) seleccionado${seleccionados.length !== 1 ? "s" : ""}`}
+              </button>
+            </div>
+          )}
 
           {ultimosCorreos.length === 0 ? (
             <div style={{ padding: "24px 0", textAlign: "center", color: "rgba(255,255,255,0.15)", fontSize: 12 }}>
@@ -542,6 +632,13 @@ const totalIncompletos = parqueSel === "todos"
             <table style={s.table}>
               <thead>
                 <tr>
+                  <th style={s.th}>
+                    <input type="checkbox"
+                      checked={seleccionados.length === ultimosCorreos.length && ultimosCorreos.length > 0}
+                      onChange={(e) => setSeleccionados(e.target.checked ? ultimosCorreos.map((c) => c._id) : [])}
+                      style={{ cursor: "pointer", accentColor: "#818cf8" }}
+                    />
+                  </th>
                   {["Empresa", "Contacto", "Asunto", "Remitente", "Fecha"].map((h) => (
                     <th key={h} style={s.th}>{h}</th>
                   ))}
@@ -553,6 +650,15 @@ const totalIncompletos = parqueSel === "todos"
                     onMouseEnter={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "rgba(255,255,255,0.018)")}
                     onMouseLeave={(e) => [...e.currentTarget.children].forEach(td => td.style.background = "transparent")}
                   >
+                    <td style={{ ...s.td, width: 32 }}>
+                      <input type="checkbox"
+                        checked={seleccionados.includes(h._id)}
+                        onChange={(e) => setSeleccionados((prev) =>
+                          e.target.checked ? [...prev, h._id] : prev.filter((id) => id !== h._id)
+                        )}
+                        style={{ cursor: "pointer", accentColor: "#818cf8" }}
+                      />
+                    </td>
                     <td style={{ ...s.td, fontSize: 13, fontWeight: 500, color: "rgba(255,255,255,0.75)" }}>
                       {h.empresaId?.empresa || "—"}
                     </td>
