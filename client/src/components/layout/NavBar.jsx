@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
-import { Bell, LogOut, X, CheckCheck, Eye } from "lucide-react";
+import {
+  Bell, LogOut, X, CheckCheck, Eye, Loader2,
+  History, FileSpreadsheet, FileText, Database,
+} from "lucide-react";
 import { useAccesibilidad } from "../../context/AccesibilidadContext";
-
 
 const routeNames = {
   "/clientes": "Clientes",
@@ -14,31 +16,45 @@ const routeNames = {
   "/proveedores": "Proveedores",
 };
 
+// Ajusta esto a tu configuración real (o importa tu instancia de axios si ya tienes una)
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-// Mock de notificaciones — reemplaza con tu API real
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    title: "Nuevo cliente registrado",
-    description: "Empresa Logística del Norte fue agregada.",
-    time: "Hace 5 min",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "Reporte listo",
-    description: "El reporte mensual de abril ya está disponible.",
-    time: "Hace 1 hora",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "Parque actualizado",
-    description: "Parque Industrial Querétaro modificó su información.",
-    time: "Ayer",
-    read: true,
-  },
-];
+const authHeaders = () => {
+  const token = localStorage.getItem("token"); // ajusta si guardas el token distinto
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+// Convierte una fecha ISO a "Hace X min / horas / días"
+const tiempoRelativo = (fecha) => {
+  const diffMs = Date.now() - new Date(fecha).getTime();
+  const min = Math.floor(diffMs / 60000);
+  if (min < 1) return "Ahora mismo";
+  if (min < 60) return `Hace ${min} min`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24) return `Hace ${horas} ${horas === 1 ? "hora" : "horas"}`;
+  const dias = Math.floor(horas / 24);
+  if (dias === 1) return "Ayer";
+  if (dias < 7) return `Hace ${dias} días`;
+  return new Date(fecha).toLocaleDateString("es-MX");
+};
+
+// Ícono según el formato exportado
+const iconoFormato = (formato) => {
+  if (formato === "excel") return <FileSpreadsheet size={14} color="#22c55e" />;
+  if (formato === "pdf") return <FileText size={14} color="#ef4444" />;
+  if (formato === "backup") return <Database size={14} color="#3b82f6" />;
+  return <FileText size={14} color="rgba(255,255,255,0.4)" />;
+};
+
+const etiquetaFormato = (formato) => {
+  if (formato === "excel") return "Excel";
+  if (formato === "pdf") return "PDF";
+  if (formato === "backup") return "Backup";
+  return formato;
+};
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -47,8 +63,14 @@ export default function Navbar() {
   const { altoContraste, toggleAltoContraste } = useAccesibilidad();
 
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotif, setLoadingNotif] = useState(true);
   const notifRef = useRef(null);
+
+  // ─── Auditoría de exportaciones ───────────────────────────────────────────
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAudit, setLoadingAudit] = useState(false);
 
   const pageName = routeNames[location.pathname] ?? "Página";
   const unreadCount = notifications.filter((n) => !n.read).length;
@@ -59,6 +81,61 @@ export default function Navbar() {
     if (h < 19) return "Buenas tardes";
     return "Buenas noches";
   };
+
+  // ─── Cargar notificaciones desde la API ──────────────────────────────────
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/notifications`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error("No se pudieron cargar las notificaciones");
+      const data = await res.json();
+      setNotifications(data);
+    } catch (err) {
+      console.error("Error cargando notificaciones:", err);
+    } finally {
+      setLoadingNotif(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    // Refresca cada 60s para simular notificaciones "en vivo"
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // ─── Cargar auditoría de exportaciones (solo al abrir el modal) ──────────
+  const fetchAuditLogs = useCallback(async () => {
+    setLoadingAudit(true);
+    try {
+      const res = await fetch(`${API_URL}/api/export/auditoria`, {
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error("No se pudo cargar la auditoría");
+      const data = await res.json();
+      setAuditLogs(data);
+    } catch (err) {
+      console.error("Error cargando auditoría de exportaciones:", err);
+    } finally {
+      setLoadingAudit(false);
+    }
+  }, []);
+
+  const openAudit = () => {
+    setAuditOpen(true);
+    fetchAuditLogs();
+  };
+
+  // Cerrar modal de auditoría con Escape
+  useEffect(() => {
+    if (!auditOpen) return;
+    const handler = (e) => {
+      if (e.key === "Escape") setAuditOpen(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [auditOpen]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -72,37 +149,63 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-  const styleId = "alto-contraste-style";
-  let existing = document.getElementById(styleId);
+    const styleId = "alto-contraste-style";
+    let existing = document.getElementById(styleId);
 
-  if (altoContraste) {
-    if (!existing) {
-      const style = document.createElement("style");
-      style.id = styleId;
-      style.innerHTML = `
-        * { color: #ffffff !important; }
-        a { color: #60a5fa !important; }
-        input, textarea, select { color: #ffffff !important; background-color: #1a1f2e !important; }
-        [style*="background"] { background-color: inherit; }
-      `;
-      document.head.appendChild(style);
+    if (altoContraste) {
+      if (!existing) {
+        const style = document.createElement("style");
+        style.id = styleId;
+        style.innerHTML = `
+          * { color: #ffffff !important; }
+          a { color: #60a5fa !important; }
+          input, textarea, select { color: #ffffff !important; background-color: #1a1f2e !important; }
+          [style*="background"] { background-color: inherit; }
+        `;
+        document.head.appendChild(style);
+      }
+    } else {
+      if (existing) existing.remove();
     }
-  } else {
-    if (existing) existing.remove();
-  }
 
-  document.body.style.filter = "";
-}, [altoContraste]);
+    document.body.style.filter = "";
+  }, [altoContraste]);
 
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  // ─── Marcar todas como leídas ─────────────────────────────────────────────
+  const markAllRead = async () => {
+    const prev = notifications;
+    setNotifications((p) => p.map((n) => ({ ...n, read: true }))); // optimista
+    try {
+      const res = await fetch(`${API_URL}/api/notifications/read-all`, {
+        method: "PATCH",
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error();
+    } catch (err) {
+      console.error("Error marcando todas como leídas:", err);
+      setNotifications(prev); // revertir si falla
+    }
+  };
 
-  const dismissNotif = (id) =>
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  // ─── Descartar una notificación ────────────────────────────────────────────
+  const dismissNotif = async (id) => {
+    const prev = notifications;
+    setNotifications((p) => p.filter((n) => n._id !== id)); // optimista
+    try {
+      const res = await fetch(`${API_URL}/api/notifications/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (!res.ok) throw new Error();
+    } catch (err) {
+      console.error("Error descartando notificación:", err);
+      setNotifications(prev); // revertir si falla
+    }
+  };
 
   const handleLogout = () => {
-    logout();          // limpia el estado / token
-    navigate("/login", { replace: true }); // redirige inmediatamente
+    logout();
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -119,29 +222,40 @@ export default function Navbar() {
       {/* Derecha */}
       <div style={s.right}>
         {/* Alto contraste */}
-          <button
-            onClick={toggleAltoContraste}
-            title="Alto contraste"
-            style={{
-              ...s.iconBtn,
-              background: altoContraste ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.04)",
-              borderColor: altoContraste ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.08)",
-            }}
-          >
-            <Eye size={14} color={altoContraste ? "#fff" : "rgba(255,255,255,0.55)"} />
-          </button>
+        <button
+          onClick={toggleAltoContraste}
+          title="Alto contraste"
+          style={{
+            ...s.iconBtn,
+            background: altoContraste ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.04)",
+            borderColor: altoContraste ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.08)",
+          }}
+        >
+          <Eye size={14} color={altoContraste ? "#fff" : "rgba(255,255,255,0.55)"} />
+        </button>
+
+        {/* Auditoría de exportaciones */}
+        <button
+          onClick={openAudit}
+          title="Auditoría de exportaciones"
+          style={{
+            ...s.iconBtn,
+            background: auditOpen ? "rgba(59,130,246,0.12)" : "rgba(255,255,255,0.04)",
+            borderColor: auditOpen ? "rgba(59,130,246,0.35)" : "rgba(255,255,255,0.08)",
+          }}
+          aria-label="Auditoría de exportaciones"
+        >
+          <History size={14} color="rgba(255,255,255,0.55)" />
+        </button>
+
         {/* Notificaciones */}
         <div ref={notifRef} style={{ position: "relative" }}>
           <button
             onClick={() => setNotifOpen((v) => !v)}
             style={{
               ...s.iconBtn,
-              background: notifOpen
-                ? "rgba(59,130,246,0.12)"
-                : "rgba(255,255,255,0.04)",
-              borderColor: notifOpen
-                ? "rgba(59,130,246,0.35)"
-                : "rgba(255,255,255,0.08)",
+              background: notifOpen ? "rgba(59,130,246,0.12)" : "rgba(255,255,255,0.04)",
+              borderColor: notifOpen ? "rgba(59,130,246,0.35)" : "rgba(255,255,255,0.08)",
             }}
             aria-label="Notificaciones"
           >
@@ -169,22 +283,32 @@ export default function Navbar() {
 
               {/* Lista */}
               <div style={s.notifList}>
-                {notifications.length === 0 ? (
+                {loadingNotif ? (
+                  <div style={s.empty}>
+                    <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                  </div>
+                ) : notifications.length === 0 ? (
                   <div style={s.empty}>Sin notificaciones nuevas</div>
                 ) : (
                   notifications.map((n) => (
-                    <div key={n.id} style={{ ...s.notifItem, background: n.read ? "transparent" : "rgba(59,130,246,0.05)" }}>
+                    <div
+                      key={n._id}
+                      style={{
+                        ...s.notifItem,
+                        background: n.read ? "transparent" : "rgba(59,130,246,0.05)",
+                      }}
+                    >
                       {/* Dot */}
                       <div style={{ ...s.dot, opacity: n.read ? 0 : 1 }} />
 
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={s.notifTitle}>{n.title}</div>
-                        <div style={s.notifDesc}>{n.description}</div>
-                        <div style={s.notifTime}>{n.time}</div>
+                        {n.description && <div style={s.notifDesc}>{n.description}</div>}
+                        <div style={s.notifTime}>{tiempoRelativo(n.createdAt)}</div>
                       </div>
 
                       <button
-                        onClick={() => dismissNotif(n.id)}
+                        onClick={() => dismissNotif(n._id)}
                         style={s.dismissBtn}
                         aria-label="Descartar"
                       >
@@ -207,6 +331,54 @@ export default function Navbar() {
           Salir
         </button>
       </div>
+
+      {/* ─── Modal de auditoría de exportaciones ─────────────────────────── */}
+      {auditOpen && (
+        <div style={s.overlay} onClick={() => setAuditOpen(false)}>
+          <div style={s.modalCard} onClick={(e) => e.stopPropagation()}>
+            <div style={s.modalHeader}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <History size={16} color="#3b82f6" />
+                <span style={s.panelTitle}>Auditoría de exportaciones</span>
+              </div>
+              <button onClick={() => setAuditOpen(false)} style={s.modalCloseBtn} aria-label="Cerrar">
+                <X size={14} />
+              </button>
+            </div>
+
+            <div style={s.auditList}>
+              {loadingAudit ? (
+                <div style={s.empty}>
+                  <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                </div>
+              ) : auditLogs.length === 0 ? (
+                <div style={s.empty}>Sin exportaciones registradas</div>
+              ) : (
+                auditLogs.map((log) => (
+                  <div key={log._id} style={s.auditItem}>
+                    <div style={s.auditIconWrap}>{iconoFormato(log.formato)}</div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={s.notifTitle}>
+                        Exportación {etiquetaFormato(log.formato)}
+                        {log.usuarioNombre ? ` — ${log.usuarioNombre}` : ""}
+                      </div>
+                      <div style={s.notifDesc}>
+                        {log.filtroTipo === "todo" || !log.filtroValor
+                          ? "Todos los registros"
+                          : `${log.filtroTipo}: ${log.filtroValor}`}
+                        {" · "}
+                        {log.totalRegistros} registro{log.totalRegistros === 1 ? "" : "s"}
+                      </div>
+                      <div style={s.notifTime}>{tiempoRelativo(log.createdAt)}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
@@ -308,6 +480,8 @@ const s = {
   },
   empty: {
     padding: "28px 16px",
+    display: "flex",
+    justifyContent: "center",
     textAlign: "center",
     fontSize: 12,
     color: "rgba(255,255,255,0.25)",
@@ -373,5 +547,67 @@ const s = {
     alignItems: "center",
     gap: 6,
     cursor: "pointer",
+  },
+
+  // ─── Modal de auditoría ────────────────────────────────────────────────
+  overlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.55)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 500,
+  },
+  modalCard: {
+    width: 420,
+    maxWidth: "90vw",
+    maxHeight: "80vh",
+    background: "#0c0f18",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: 12,
+    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+  },
+  modalHeader: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "14px 16px",
+    borderBottom: "1px solid rgba(255,255,255,0.06)",
+    flexShrink: 0,
+  },
+  modalCloseBtn: {
+    background: "transparent",
+    border: "none",
+    color: "rgba(255,255,255,0.4)",
+    cursor: "pointer",
+    padding: 4,
+    display: "flex",
+    alignItems: "center",
+    borderRadius: 4,
+  },
+  auditList: {
+    overflowY: "auto",
+  },
+  auditItem: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: "12px 16px",
+    borderBottom: "1px solid rgba(255,255,255,0.04)",
+  },
+  auditIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 6,
+    background: "rgba(255,255,255,0.04)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 1,
   },
 };

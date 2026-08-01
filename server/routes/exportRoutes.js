@@ -9,8 +9,11 @@ import autoTable from "jspdf-autotable";
 import Empresa from "../models/Empresa.js";
 import ParqueIndustrial from "../models/ParqueIndustrial.js";
 import User from "../models/User.js";
+import ExportLog from "../models/ExportLog.js";
 
 import { protect } from "../middleware/authMiddleware.js";
+import { notify } from "../utils/notify.js";
+import { logExport } from "../utils/logExport.js";
 
 const router = express.Router();
 
@@ -80,6 +83,20 @@ router.get("/export/filtros", protect, async (req, res) => {
   }
 });
 
+// ─── Historial de auditoría de exportaciones ──────────────────────────────────
+router.get("/export/auditoria", protect, async (req, res) => {
+  try {
+    const registros = await ExportLog.find()
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+    res.json(registros);
+  } catch (err) {
+    console.error("Error obteniendo auditoría de exportaciones:", err);
+    res.status(500).json({ error: "Error obteniendo auditoría" });
+  }
+});
+
 // ─── Helper: número(s) de teléfono de un contacto ─────────────────────────────
 const telefonosContacto = (contacto) => {
   const lista = [];
@@ -130,6 +147,16 @@ const COLS = ["NO.", "EMPRESA", "GIRO DE LA EMPRESA", "DIRECCION",
               "TELEFONO/FAX", "TELEFONOS ADICIONALES", "CONTACTOS", "PUESTO/AREA",
               "TELEFONO CONTACTO", "CORREO-ELECTRONICO", "NOTAS", "PAGINA WEB"];
 
+// ─── Helper: etiqueta legible del filtro, para notificación/auditoría ────────
+const etiquetaFiltro = (tipo, valor) => {
+  if (tipo === "todo" || !valor) return "Todos los registros";
+  if (tipo === "estado") return `Estado: ${valor}`;
+  if (tipo === "parque") return `Parque específico`;
+  if (tipo === "empresa") return `Empresa específica`;
+  if (tipo === "proveedor") return valor ? "Proveedor específico" : "Todos los proveedores";
+  return tipo;
+};
+
 // ─── EXPORTAR EXCEL ───────────────────────────────────────────────────────────
 router.get("/export/excel", protect, async (req, res) => {
   try {
@@ -175,6 +202,14 @@ router.get("/export/excel", protect, async (req, res) => {
     const fechaFile = new Date().toISOString().slice(0, 10);
     const sufijo   = tipo !== "todo" ? `_${tipo}` : "";
 
+    // Notificación + auditoría (no bloquean la descarga)
+    notify({
+      title: "Exportación de Excel generada",
+      description: `${etiquetaFiltro(tipo, valor)} — ${empresas.length} registro(s)${req.user?.nombre ? ` por ${req.user.nombre}` : ""}`,
+      type: "sistema",
+    });
+    logExport({ formato: "excel", filtroTipo: tipo, filtroValor: valor, totalRegistros: empresas.length, req });
+
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="Directorio_CRM${sufijo}_${fechaFile}.xlsx"`);
     res.send(buffer);
@@ -209,14 +244,28 @@ router.get("/export/pdf", protect, async (req, res) => {
         startY,
         head: [COLS],
         body,
-        styles: { fontSize: 6, cellPadding: 1.5, overflow: "linebreak" },
-        headStyles: { fillColor: [30, 64, 175], fontSize: 6, fontStyle: "bold" },
+        theme: "grid", // ← activa las líneas de la cuadrícula
+        styles: {
+          fontSize: 6,
+          cellPadding: 1.5,
+          overflow: "linebreak",
+          lineColor: [0, 0, 0],   // ← líneas negras
+          lineWidth: 0.1,         // ← grosor de línea
+        },
+        headStyles: {
+          fillColor: [30, 64, 175],
+          fontSize: 6,
+          fontStyle: "bold",
+          lineColor: [0, 0, 0],
+          lineWidth: 0.1,
+          textColor: [255, 255, 255], // opcional: mejora contraste del texto en el header
+        },
         columnStyles: {
-  0: { cellWidth: 8  }, 1: { cellWidth: 30 }, 2: { cellWidth: 26 },
-  3: { cellWidth: 26 }, 4: { cellWidth: 18 }, 5: { cellWidth: 20 },
-  6: { cellWidth: 18 }, 7: { cellWidth: 18 }, 8: { cellWidth: 22 },
-  9: { cellWidth: 24 }, 10: { cellWidth: 16 }, 11: { cellWidth: 22 },
-},
+          0: { cellWidth: 8  }, 1: { cellWidth: 30 }, 2: { cellWidth: 26 },
+          3: { cellWidth: 26 }, 4: { cellWidth: 18 }, 5: { cellWidth: 20 },
+          6: { cellWidth: 18 }, 7: { cellWidth: 18 }, 8: { cellWidth: 22 },
+          9: { cellWidth: 24 }, 10: { cellWidth: 16 }, 11: { cellWidth: 22 },
+        },
         margin: { left: 10, right: 10 },
         didParseCell: (data) => {
           if (data.row.index % 2 === 0 && data.section === "body") {
@@ -258,6 +307,15 @@ router.get("/export/pdf", protect, async (req, res) => {
 
     const fechaFile = new Date().toISOString().slice(0, 10);
     const sufijo    = tipo !== "todo" ? `_${tipo}` : "";
+
+    // Notificación + auditoría (no bloquean la descarga)
+    notify({
+      title: "Exportación de PDF generada",
+      description: `${etiquetaFiltro(tipo, valor)} — ${empresas.length} registro(s)${req.user?.nombre ? ` por ${req.user.nombre}` : ""}`,
+      type: "sistema",
+    });
+    logExport({ formato: "pdf", filtroTipo: tipo, filtroValor: valor, totalRegistros: empresas.length, req });
+
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="Directorio_CRM${sufijo}_${fechaFile}.pdf"`);
     res.send(Buffer.from(doc.output("arraybuffer")));
@@ -292,6 +350,21 @@ router.get("/export/backup", protect, async (req, res) => {
 
     const fechaFile = new Date().toISOString().slice(0, 10);
     const sufijo    = tipo !== "todo" ? `_${tipo}` : "";
+
+    // Notificación + auditoría — el backup incluye usuarios, por eso siempre se registra
+    notify({
+      title: "Respaldo (backup) generado",
+      description: `${etiquetaFiltro(tipo, valor)} — ${empresas.length} empresa(s), ${parques.length} parque(s)${users.length ? `, ${users.length} usuario(s)` : ""}${req.user?.nombre ? ` — por ${req.user.nombre}` : ""}`,
+      type: "sistema",
+    });
+    logExport({
+      formato: "backup",
+      filtroTipo: tipo,
+      filtroValor: valor,
+      totalRegistros: empresas.length + parques.length + users.length,
+      req,
+    });
+
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Content-Disposition", `attachment; filename="CRM_Backup${sufijo}_${fechaFile}.json"`);
     res.send(JSON.stringify(backup, null, 2));

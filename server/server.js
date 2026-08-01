@@ -13,6 +13,7 @@ import proveedorRoutes from "./routes/proveedorRoutes.js";
 import correoRoutes from "./routes/correoRoutes.js";
 import cuentaCorreoRoutes from "./routes/cuentaCorreoRoutes.js"; // ← agregar
 import systemRoutes from "./routes/systemRoutes.js"; // ← agregar
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 dotenv.config();
 
@@ -38,6 +39,7 @@ app.use("/api/cuentas-correo", cuentaCorreoRoutes); // ← agregar
 app.use("/api/system",         systemRoutes);        // ← agregar
 app.use("/api/proveedores",    proveedorRoutes);
 app.use("/api",                exportRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.get("/", (req, res) => {
   res.json({ mensaje: "API funcionando" });
